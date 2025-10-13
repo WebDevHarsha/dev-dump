@@ -114,8 +114,9 @@ export default async function HackathonsList() {
               
               return (
                 <Card key={hack.id} className={`p-6 border-4 border-foreground ${i % 2 === 0 ? "rotate-1" : "-rotate-1"} sticker hover:scale-105 transition-transform cursor-pointer bg-card`}>
-                  <a href={hack.url} target="_blank" rel="noopener noreferrer" className="block">
-                    <div className="space-y-4">
+                  <div className="space-y-4">
+                    {/* Main clickable content (links to hack.url) */}
+                    <a href={hack.url} target="_blank" rel="noopener noreferrer" className="block">
                       {/* Thumbnail */}
                       {thumbnailUrl && (
                         <div className="relative -mx-6 -mt-6 mb-4 h-32 overflow-hidden border-b-4 border-foreground">
@@ -131,7 +132,7 @@ export default async function HackathonsList() {
                           )}
                         </div>
                       )}
-                      
+
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <h3 className="text-2xl font-black mb-1 font-mono">{hack.title}</h3>
@@ -173,12 +174,15 @@ export default async function HackathonsList() {
                           </Badge>
                         ))}
                       </div>
+                    </a>
 
-                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-foreground font-mono font-bold">
+                    {/* Action buttons (as anchors) */}
+                    <div>
+                      <Button href={hack.start_a_submission_url || hack.url} target="_blank" rel="noopener noreferrer" className="w-full border-2 border-foreground font-mono font-bold">
                         {isOpen ? "REGISTER NOW →" : "LEARN MORE →"}
                       </Button>
                     </div>
-                  </a>
+                  </div>
                 </Card>
               )
             })}
