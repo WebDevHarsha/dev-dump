@@ -195,6 +195,18 @@ async function fetchHackathons(): Promise<Hackathon[]> {
             const startsAt = (rec['starts_at'] ?? '') as string
             const endsAt = (rec['ends_at'] ?? '') as string
             const isOnlineFlag = rec['is_online'] === true
+            const settings = (rec['settings'] && typeof rec['settings'] === 'object') ? (rec['settings'] as Record<string, unknown>) : undefined
+            const regStartsRaw = settings?.reg_starts_at as string | undefined
+            const regEndsRaw = settings?.reg_ends_at as string | undefined
+            const parseDate = (s?: string) => {
+              if (!s) return undefined
+              const t = Date.parse(s)
+              return Number.isNaN(t) ? undefined : new Date(t)
+            }
+            const regStarts = parseDate(regStartsRaw)
+            const regEnds = parseDate(regEndsRaw)
+            const now = new Date()
+            const registrationOpen = regStarts && regEnds ? (now >= regStarts && now <= regEnds) : undefined
             const formatDate = (iso?: string) => {
               if (!iso) return ''
               try {
@@ -204,12 +216,21 @@ async function fetchHackathons(): Promise<Hackathon[]> {
                 return iso
               }
             }
-            const settings = (rec['settings'] && typeof rec['settings'] === 'object') ? (rec['settings'] as Record<string, unknown>) : undefined
             const url = (settings?.site as string) ?? (rec['external_url'] as string) ?? (rec['url'] as string) ?? (slug ? `https://devfolio.co/${slug}` : '#')
             const thumbnail_url = (rec['logo'] ?? rec['thumbnail_url'] ?? '') as string
             const displayed_location = { icon: '', location: isOnlineFlag ? 'Online' : ((rec['location'] as string) ?? 'In-Person') }
-            const open_state = (rec['open_state'] ?? ((rec['is_open'] === true) ? 'open' : 'closed')) as string
-            const time_left_to_submission = (rec['time_left_to_submission'] ?? '') as string
+            const computedOpen = registrationOpen === undefined ? (rec['is_open'] === true || String(rec['open_state']) === 'open') : registrationOpen
+            const open_state = (rec['open_state'] ?? (computedOpen ? 'open' : 'closed')) as string
+            let time_left_to_submission = (rec['time_left_to_submission'] ?? '') as string
+            if (!time_left_to_submission && regEnds) {
+              const diff = regEnds.getTime() - now.getTime()
+              if (diff > 0) {
+                const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+                time_left_to_submission = `${days} days left`
+              } else {
+                time_left_to_submission = 'Closed'
+              }
+            }
             const submission_period_dates = (rec['submission_period_dates'] ?? ((startsAt || endsAt) ? `${formatDate(startsAt)} - ${formatDate(endsAt)}` : '')) as string
 
             const themes = Array.isArray(rec['themes']) ? (rec['themes'] as unknown[]).map((t, i:number) => {
