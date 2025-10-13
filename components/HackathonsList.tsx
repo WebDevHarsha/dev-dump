@@ -191,7 +191,9 @@ async function fetchHackathons(): Promise<Hackathon[]> {
 
             const id = rec['id'] ?? rec['uuid'] ?? rec['slug'] ?? idx
             const title = (rec['name'] ?? rec['title'] ?? 'Untitled') as string
-            const url = (rec['external_url'] ?? rec['url'] ?? '#') as string
+            const slug = (rec['slug'] ?? '') as string
+            const settings = (rec['settings'] && typeof rec['settings'] === 'object') ? (rec['settings'] as Record<string, unknown>) : undefined
+            const url = (settings?.site as string) ?? (rec['external_url'] as string) ?? (rec['url'] as string) ?? (slug ? `https://devfolio.co/${slug}` : '#')
             const thumbnail_url = (rec['logo'] ?? rec['thumbnail_url'] ?? '') as string
             const displayed_location = { icon: '', location: (rec['location'] ?? 'Online') as string }
             const open_state = (rec['open_state'] ?? ((rec['is_open'] === true) ? 'open' : 'closed')) as string
@@ -212,12 +214,12 @@ async function fetchHackathons(): Promise<Hackathon[]> {
 
             const prize_amount = (rec['prize_amount'] ?? rec['prizes'] ?? '') as string
             const prizes_counts = { cash: Number((rec['prizes_counts'] as Record<string, unknown>)?.cash ?? 0), other: Number((rec['prizes_counts'] as Record<string, unknown>)?.other ?? 0) }
-            const registrations_count = Number(rec['registrations_count'] ?? rec['num_registrations'] ?? 0)
+            const registrations_count = Number(rec['participants_count'] ?? rec['registrations_count'] ?? rec['num_registrations'] ?? 0)
             const organization_name = (rec['organization_name'] ?? rec['organization'] ?? rec['host'] ?? '') as string
             const featured = !!rec['featured']
             const winners_announced = !!rec['winners_announced']
             const submission_gallery_url = (rec['submission_gallery_url'] ?? '') as string
-            const start_a_submission_url = (rec['start_a_submission_url'] ?? rec['registration_url'] ?? (rec['external_url'] ?? rec['url'] ?? '#')) as string
+            const start_a_submission_url = (rec['start_a_submission_url'] ?? rec['registration_url'] ?? (settings?.external_apply_url as string) ?? (settings?.site as string) ?? (rec['external_url'] ?? rec['url'] ?? (slug ? `https://devfolio.co/${slug}` : '#'))) as string
 
             return {
               id,
