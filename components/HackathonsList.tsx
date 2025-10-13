@@ -4,16 +4,89 @@ import Badge from "./ui/Badge"
 import Button from "./ui/Button"
 import { Calendar, MapPin, Users, Trophy } from "lucide-react"
 
-const hackathons = [
-  { id: 1, name: "CodeChaos 2025", tagline: "Break things, win prizes", date: "Mar 15-17, 2025", location: "San Francisco, CA", mode: "In-Person", participants: "500+", prize: "$50K", status: "Open", tags: ["Web3", "AI", "Hardware"] },
-  { id: 2, name: "HackTheNight", tagline: "Code till sunrise", date: "Apr 2-3, 2025", location: "Online", mode: "Virtual", participants: "1000+", prize: "$30K", status: "Open", tags: ["Mobile", "Gaming", "Social"] },
-  { id: 3, name: "BuildFast Jam", tagline: "Ship or die trying", date: "Apr 20-22, 2025", location: "New York, NY", mode: "Hybrid", participants: "300+", prize: "$25K", status: "Open", tags: ["Fintech", "SaaS", "API"] },
-  { id: 4, name: "Midnight Hackers", tagline: "No sleep, just code", date: "May 5-7, 2025", location: "Austin, TX", mode: "In-Person", participants: "400+", prize: "$40K", status: "Soon", tags: ["IoT", "Climate", "Health"] },
-  { id: 5, name: "DevRage 2025", tagline: "Rage code your way to victory", date: "May 18-19, 2025", location: "Online", mode: "Virtual", participants: "800+", prize: "$20K", status: "Soon", tags: ["Open Source", "DevTools", "Security"] },
-  { id: 6, name: "SpeedRun Hack", tagline: "24 hours of pure chaos", date: "Jun 1-2, 2025", location: "Seattle, WA", mode: "In-Person", participants: "250+", prize: "$35K", status: "Soon", tags: ["AI/ML", "Data", "Cloud"] },
-]
+type Theme = {
+  id: number
+  name: string
+}
 
-export default function HackathonsList() {
+type Hackathon = {
+  id: number
+  title: string
+  url: string
+  thumbnail_url: string
+  displayed_location: {
+    icon: string
+    location: string
+  }
+  open_state: string
+  time_left_to_submission: string
+  submission_period_dates: string
+  themes: Theme[]
+  prize_amount: string
+  prizes_counts: {
+    cash: number
+    other: number
+  }
+  registrations_count: number
+  organization_name: string
+  featured: boolean
+  winners_announced: boolean
+  submission_gallery_url: string
+  start_a_submission_url: string
+}
+
+type DevpostResponse = {
+  source: string
+  data: {
+    hackathons: Hackathon[]
+    meta: {
+      total_count: number
+      per_page: number
+      fuzzy: boolean
+    }
+  }
+}
+
+async function fetchHackathons(): Promise<Hackathon[]> {
+  try {
+    // Make sure URL ends with dl=1 to get raw JSON
+    const DROPBOX_JSON_URL = 'https://www.dropbox.com/scl/fi/btk9utjoupf53m6zi03ki/hack.json?rlkey=omwn112qg0bc16drwou7jpvms&st=izfqx1ww&dl=1'
+    
+    const res = await fetch(DROPBOX_JSON_URL, {
+      cache: 'no-store'
+    })
+
+    if (!res.ok) {
+      console.error(`Failed to fetch JSON: ${res.status}`)
+      return []
+    }
+
+    const json: any = await res.json()
+    
+    // The JSON is an array with one object: [{"source": "devpost", "data": {...}}]
+    if (Array.isArray(json) && json.length > 0 && json[0].data && json[0].data.hackathons) {
+      return json[0].data.hackathons
+    }
+    
+    // Fallback: if it's directly the object format
+    if (json.data && json.data.hackathons) {
+      return json.data.hackathons
+    }
+    
+    console.error('Unexpected JSON structure:', json)
+    return []
+  } catch (error) {
+    console.error('Error fetching hackathons:', error)
+    return []
+  }
+}
+
+function stripHtmlTags(str: string): string {
+  return str.replace(/<[^>]*>/g, '')
+}
+
+export default async function HackathonsList() {
+  const hackathons = await fetchHackathons()
   return (
     <section id="hackathons" className="py-16">
       <div className="container mx-auto px-4">
@@ -32,34 +105,83 @@ export default function HackathonsList() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {hackathons.map((hack, i) => (
-              <Card key={hack.id} className={`p-6 border-4 border-foreground ${i % 2 === 0 ? "rotate-1" : "-rotate-1"} sticker hover:scale-105 transition-transform cursor-pointer bg-card`}>
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-2xl font-black mb-1 font-mono">{hack.name}</h3>
-                      <p className="text-muted-foreground text-sm">{hack.tagline}</p>
+            {hackathons.map((hack, i) => {
+              const prizeText = stripHtmlTags(hack.prize_amount)
+              const thumbnailUrl = hack.thumbnail_url.startsWith('//')
+                ? `https:${hack.thumbnail_url}`
+                : hack.thumbnail_url
+              const isOpen = hack.open_state === "open"
+              
+              return (
+                <Card key={hack.id} className={`p-6 border-4 border-foreground ${i % 2 === 0 ? "rotate-1" : "-rotate-1"} sticker hover:scale-105 transition-transform cursor-pointer bg-card`}>
+                  <a href={hack.url} target="_blank" rel="noopener noreferrer" className="block">
+                    <div className="space-y-4">
+                      {/* Thumbnail */}
+                      {thumbnailUrl && (
+                        <div className="relative -mx-6 -mt-6 mb-4 h-32 overflow-hidden border-b-4 border-foreground">
+                          <img
+                            src={thumbnailUrl}
+                            alt={hack.title}
+                            className="w-full h-full object-cover"
+                          />
+                          {hack.featured && (
+                            <Badge className="absolute top-2 right-2 bg-yellow-500 text-black border-2 border-foreground font-mono font-bold rotate-3">
+                              FEATURED
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-2xl font-black mb-1 font-mono">{hack.title}</h3>
+                          <p className="text-muted-foreground text-sm">by {hack.organization_name}</p>
+                        </div>
+                        <Badge className={`${isOpen ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"} border-2 border-foreground font-mono font-bold rotate-3 shrink-0`}>
+                          {isOpen ? "OPEN" : "CLOSED"}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-primary" />
+                          <span className="font-mono text-xs">{hack.submission_period_dates}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-secondary" />
+                          <span className="font-mono text-xs">{hack.displayed_location.location}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-primary" />
+                          <span className="font-mono">{hack.registrations_count.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-secondary" />
+                          <span className="font-mono font-bold">{prizeText}</span>
+                        </div>
+                      </div>
+
+                      {/* Time Left */}
+                      <div className="text-sm font-bold text-primary">
+                        ⏰ {hack.time_left_to_submission}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {hack.themes.map((theme) => (
+                          <Badge key={theme.id} variant="outline" className="border-2 border-foreground font-mono text-xs rotate-1">
+                            {theme.name}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-foreground font-mono font-bold">
+                        {isOpen ? "REGISTER NOW →" : "LEARN MORE →"}
+                      </Button>
                     </div>
-                    <Badge className={`${hack.status === "Open" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"} border-2 border-foreground font-mono font-bold rotate-3 shrink-0`}>{hack.status}</Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" /><span className="font-mono">{hack.date}</span></div>
-                    <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-secondary" /><span className="font-mono">{hack.location}</span></div>
-                    <div className="flex items-center gap-2"><Users className="w-4 h-4 text-primary" /><span className="font-mono">{hack.participants}</span></div>
-                    <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-secondary" /><span className="font-mono font-bold">{hack.prize}</span></div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {hack.tags.map((tag, idx) => (
-                      <Badge key={idx} variant="outline" className="border-2 border-foreground font-mono text-xs rotate-1">{tag}</Badge>
-                    ))}
-                  </div>
-
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground border-2 border-foreground font-mono font-bold">{hack.status === "Open" ? "REGISTER NOW →" : "LEARN MORE →"}</Button>
-                </div>
-              </Card>
-            ))}
+                  </a>
+                </Card>
+              )
+            })}
           </div>
 
           <div className="text-center mt-12">
