@@ -36,7 +36,7 @@ type Hackathon = {
 
 async function fetchHackathons(): Promise<Hackathon[]> {
   // Replace this URL with your Dropbox JSON file URL (ensure dl=1 to fetch raw JSON)
-  const DROPBOX_JSON_URL = 'https://www.dropbox.com/scl/fi/btk9utjoupf53m6zi03ki/hack.json?rlkey=omwn112qg0bc16drwou7jpvms&st=izfqx1ww&dl=1'
+  const DROPBOX_JSON_URL = 'https://www.dropbox.com/scl/fi/s80mllk5preqn5hgyi934/hack.json?rlkey=setdetypr0cj9d9ij5wo42pgs&st=5x3gxgi8&dl=0'
   
   const res = await fetch(DROPBOX_JSON_URL, {
     cache: 'no-store'
