@@ -3,6 +3,7 @@ import Card from "./ui/Card"
 import Badge from "./ui/Badge"
 import Button from "./ui/Button"
 import { Calendar, MapPin, Users, Trophy } from "lucide-react"
+import { Dropbox } from 'dropbox'
 
 type Theme = {
   id: number
@@ -40,27 +41,231 @@ type Hackathon = {
 async function fetchHackathons(): Promise<Hackathon[]> {
   try {
     // Make sure URL ends with dl=1 to get raw JSON
-    const DROPBOX_JSON_URL = 'https://www.dropbox.com/scl/fi/s80mllk5preqn5hgyi934/hack.json?rlkey=setdetypr0cj9d9ij5wo42pgs&st=5x3gxgi8&dl=0'
-  
-    const res = await fetch(DROPBOX_JSON_URL, {
-      cache: 'no-store'
-    })
+    const DROPBOX_JSON_URL = 'https://www.dropbox.com/scl/fi/s80mllk5preqn5hgyi934/hack.json?rlkey=setdetypr0cj9d9ij5wo42pgs&st=mg0y4hr2&dl=0'
 
-    if (!res.ok) {
-      console.error(`Failed to fetch JSON: ${res.status}`)
-      return []
+    // If the server has a DROPBOX_ACCESS_TOKEN and we have a dropbox share link,
+    // prefer using the server-side Dropbox API route to avoid exposing tokens client-side
+    const isDropboxLink = DROPBOX_JSON_URL.includes('dropbox.com') || DROPBOX_JSON_URL.includes('dropboxusercontent.com')
+
+    // If we have a server-side Dropbox token, use the SDK to download the file
+    let json: unknown
+    const token = process.env.DROPBOX_ACCESS_TOKEN
+    if (isDropboxLink && token) {
+      try {
+        // Provide a fetch implementation for the SDK in Node/Next server runtime.
+        // Some SDK versions expect response.buffer() which the Web fetch Response doesn't implement.
+        // Wrap global fetch to add a .buffer() method so the SDK can call it.
+        const fetchWithBuffer = async (input: any, init?: any) => {
+          const res = await (globalThis as any).fetch(input, init)
+          try {
+            // attach buffer() that returns a Node Buffer
+            ;(res as any).buffer = async () => Buffer.from(await res.arrayBuffer())
+          } catch (e) {
+            // ignore
+          }
+          return res
+        }
+
+        const dbx = new Dropbox({ accessToken: token as string, fetch: fetchWithBuffer })
+
+        // If the link looks like a shared link (dropbox.com), use sharingGetSharedLinkFile
+        if (DROPBOX_JSON_URL.includes('dropbox.com')) {
+          const res = await dbx.sharingGetSharedLinkFile({ url: DROPBOX_JSON_URL })
+          // SDK v10+ may return result.fileBinary or result.fileBlob
+          // The SDK sometimes returns the content directly on `res.result.fileBinary` or as `res.result` string
+          const resultAny: any = (res as any).result ?? res
+          let buffer: Buffer | null = null
+          if (resultAny.fileBinary) {
+            buffer = Buffer.from(resultAny.fileBinary)
+          } else if (resultAny.fileBlob) {
+            const ab = await resultAny.fileBlob.arrayBuffer()
+            buffer = Buffer.from(ab)
+          } else if (typeof resultAny === 'string') {
+            // Some SDK behaviours return the text directly
+            json = JSON.parse(resultAny)
+          }
+
+          if (!json && buffer) {
+            json = JSON.parse(buffer.toString('utf8'))
+          }
+        } else {
+          // Try filesDownload by path if the URL looks like a path (/folder/file.json)
+          if (DROPBOX_JSON_URL.startsWith('/')) {
+            const res = await dbx.filesDownload({ path: DROPBOX_JSON_URL })
+            const resultAny: any = (res as any).result ?? res
+            let buffer: Buffer | null = null
+            if (resultAny.fileBinary) {
+              buffer = Buffer.from(resultAny.fileBinary)
+            } else if (resultAny.fileBlob) {
+              const ab = await resultAny.fileBlob.arrayBuffer()
+              buffer = Buffer.from(ab)
+            }
+            if (buffer) json = JSON.parse(buffer.toString('utf8'))
+          } else {
+            // Fallback to HTTP fetch for dropboxusercontent links
+            const r = await fetch(DROPBOX_JSON_URL, { cache: 'no-store' })
+            const text = await r.text()
+            json = JSON.parse(text)
+          }
+        }
+      } catch (err) {
+        console.error('Dropbox SDK download error:', err)
+        return []
+      }
+    } else {
+      // No token or not a dropbox link — fetch directly
+      const res = await fetch(DROPBOX_JSON_URL, { cache: 'no-store' })
+      if (!res.ok) {
+        console.error(`Failed to fetch JSON: ${res.status}`)
+        return []
+      }
+      const contentType = res.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) json = await res.json()
+      else {
+        const text = await res.text()
+        try { json = JSON.parse(text) } catch (err) { console.error('Failed to parse response as JSON, response preview:', text.slice(0,300)); return [] }
+      }
     }
 
-    const json: unknown = await res.json()
-
-    // The JSON is an array with one object: [{"source": "devpost", "data": {...}}]
-    if (Array.isArray(json) && json.length > 0 && typeof json[0] === 'object' && json[0] !== null) {
-      const first = json[0] as Record<string, unknown>
-      if (first.data && typeof first.data === 'object' && first.data !== null) {
-        const data = first.data as Record<string, unknown>
-        if (Array.isArray(data.hackathons)) {
-          return data.hackathons as Hackathon[]
+    // The JSON may be an array of source objects (e.g. [{ source: 'devfolio', data: {...} }, { source: 'devpost', data: {...} }])
+    if (Array.isArray(json) && json.length > 0) {
+      // helper: deep-search for open_hackathons array inside an object
+      const findOpenHackathons = (obj: any): any[] | null => {
+        if (!obj || typeof obj !== 'object') return null
+        if (Array.isArray(obj.open_hackathons)) return obj.open_hackathons
+        for (const k of Object.keys(obj)) {
+          try {
+            const v = obj[k]
+            if (v && typeof v === 'object') {
+              const found = findOpenHackathons(v)
+              if (found) return found
+            }
+          } catch (e) {
+            // ignore
+          }
         }
+        return null
+      }
+
+      const devpostLists: Hackathon[] = []
+      const devfolioLists: Hackathon[] = []
+
+      for (const item of json as any[]) {
+        if (!item || typeof item !== 'object') continue
+        const data = item.data ?? item
+
+        // devpost style
+        if (data && typeof data === 'object' && Array.isArray(data.hackathons)) {
+          devpostLists.push(...(data.hackathons as Hackathon[]))
+        }
+
+        // devfolio style: search for open_hackathons anywhere inside the object
+        const open = findOpenHackathons(data)
+        if (open && Array.isArray(open) && open.length > 0) {
+          // map devfolio open_hackathons entries into our Hackathon shape
+          const mapped = open.map((h: any, idx: number) => {
+            return {
+              id: h.id ?? h.uuid ?? h.slug ?? idx,
+              title: h.name ?? h.title ?? 'Untitled',
+              url: h.external_url ?? h.url ?? '#',
+              thumbnail_url: h.logo ?? h.thumbnail_url ?? '',
+              displayed_location: { icon: '', location: h.location ?? 'Online' },
+              open_state: h.open_state ?? (h.is_open ? 'open' : 'closed'),
+              time_left_to_submission: h.time_left_to_submission ?? '',
+              submission_period_dates: h.submission_period_dates ?? '',
+              themes: Array.isArray(h.themes) ? h.themes.map((t: any, i:number) => {
+                if (typeof t === 'string') return { id: i, name: t }
+                if (t && typeof t === 'object') {
+                  const maybe = t.theme ?? t
+                  return { id: maybe.id ?? i, name: maybe.name ?? String(maybe) }
+                }
+                return { id: i, name: String(t) }
+              }) : [],
+              prize_amount: h.prize_amount ?? h.prizes ?? '',
+              prizes_counts: { cash: h.prizes_counts?.cash ?? 0, other: h.prizes_counts?.other ?? 0 },
+              registrations_count: h.registrations_count ?? h.num_registrations ?? 0,
+              organization_name: h.organization_name ?? h.organization ?? h.host ?? '',
+              featured: !!h.featured,
+              winners_announced: !!h.winners_announced,
+              submission_gallery_url: h.submission_gallery_url ?? '',
+              start_a_submission_url: h.start_a_submission_url ?? h.registration_url ?? (h.external_url ?? h.url ?? '#'),
+            } as Hackathon
+          })
+          devfolioLists.push(...mapped)
+        }
+      }
+
+      // If we collected any lists, merge and dedupe (prefer devpost entries when duplicates exist)
+      const merged: Hackathon[] = [...devpostLists, ...devfolioLists]
+      if (merged.length > 0) {
+        const byKey = new Map<string, Hackathon>()
+        for (const h of merged) {
+          const key = (h.url && String(h.url)) || String(h.id)
+          if (!byKey.has(key)) byKey.set(key, h)
+          else {
+            const existing = byKey.get(key)!
+            if (!existing.thumbnail_url && h.thumbnail_url) existing.thumbnail_url = h.thumbnail_url
+            if ((!existing.prize_amount || existing.prize_amount === '') && h.prize_amount) existing.prize_amount = h.prize_amount
+          }
+        }
+        return Array.from(byKey.values())
+      }
+    }
+
+    // If the JSON is directly an array of hackathon-like objects (e.g. [{...}, {...}])
+    if (Array.isArray(json) && json.length > 0 && typeof json[0] === 'object') {
+      const arr = json as unknown[]
+      // simple heuristic: if items look like hackathon entries, normalize them
+      const looksLikeHack = (item: any) => item && (item.title || item.name) && (item.url || item.external_url)
+      if (arr.every(looksLikeHack)) {
+        const normalized = arr.map((h: any, idx) => {
+          const id = h.id ?? h.uuid ?? h.slug ?? idx
+          const title = h.title ?? h.name ?? 'Untitled Hack'
+          const url = h.url ?? h.external_url ?? '#'
+          const thumbnail_url = h.thumbnail_url ?? h.logo ?? ''
+          const displayed_location = { icon: '', location: h.location ?? h.displayed_location?.location ?? 'Online' }
+          const open_state = h.open_state ?? (h.is_open ? 'open' : 'closed')
+          const time_left_to_submission = h.time_left_to_submission ?? h.time_left ?? ''
+          const submission_period_dates = h.submission_period_dates ?? h.dates ?? ''
+          const themes = Array.isArray(h.themes) ? h.themes.map((t: any, i: number) => {
+            if (typeof t === 'string') return { id: i, name: t }
+            if (t && typeof t === 'object') {
+              const maybe = t.theme ?? t
+              return { id: maybe.id ?? i, name: maybe.name ?? String(maybe) }
+            }
+            return { id: i, name: String(t) }
+          }) : []
+          const prize_amount = h.prize_amount ?? h.prizes ?? ''
+          const prizes_counts = { cash: h.prizes_counts?.cash ?? 0, other: h.prizes_counts?.other ?? 0 }
+          const registrations_count = h.registrations_count ?? h.num_registrations ?? 0
+          const organization_name = h.organization_name ?? h.organization ?? h.host ?? ''
+          const featured = !!h.featured
+          const winners_announced = !!h.winners_announced
+          const submission_gallery_url = h.submission_gallery_url ?? ''
+          const start_a_submission_url = h.start_a_submission_url ?? h.registration_url ?? url
+
+          return {
+            id,
+            title,
+            url,
+            thumbnail_url,
+            displayed_location,
+            open_state,
+            time_left_to_submission,
+            submission_period_dates,
+            themes,
+            prize_amount,
+            prizes_counts,
+            registrations_count,
+            organization_name,
+            featured,
+            winners_announced,
+            submission_gallery_url,
+            start_a_submission_url,
+          } as Hackathon
+        })
+
+        return normalized
       }
     }
 
@@ -82,6 +287,8 @@ async function fetchHackathons(): Promise<Hackathon[]> {
     return []
   }
 }
+
+// No client-side fallback per user request
 
 function stripHtmlTags(str: string): string {
   return str.replace(/<[^>]*>/g, '')
@@ -181,9 +388,14 @@ export default async function HackathonsList() {
 
                     {/* Action buttons (as anchors) */}
                     <div>
-                      <Button href={hack.start_a_submission_url || hack.url} target="_blank" rel="noopener noreferrer" className="w-full border-2 border-foreground font-mono font-bold">
+                      <a
+                        href={hack.start_a_submission_url || hack.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block text-center w-full border-2 border-foreground font-mono font-bold py-2 px-4"
+                      >
                         {isOpen ? "REGISTER NOW →" : "LEARN MORE →"}
-                      </Button>
+                      </a>
                     </div>
                   </div>
                 </Card>
