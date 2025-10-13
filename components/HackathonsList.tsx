@@ -192,13 +192,25 @@ async function fetchHackathons(): Promise<Hackathon[]> {
             const id = rec['id'] ?? rec['uuid'] ?? rec['slug'] ?? idx
             const title = (rec['name'] ?? rec['title'] ?? 'Untitled') as string
             const slug = (rec['slug'] ?? '') as string
+            const startsAt = (rec['starts_at'] ?? '') as string
+            const endsAt = (rec['ends_at'] ?? '') as string
+            const isOnlineFlag = rec['is_online'] === true
+            const formatDate = (iso?: string) => {
+              if (!iso) return ''
+              try {
+                const d = new Date(iso)
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              } catch {
+                return iso
+              }
+            }
             const settings = (rec['settings'] && typeof rec['settings'] === 'object') ? (rec['settings'] as Record<string, unknown>) : undefined
             const url = (settings?.site as string) ?? (rec['external_url'] as string) ?? (rec['url'] as string) ?? (slug ? `https://devfolio.co/${slug}` : '#')
             const thumbnail_url = (rec['logo'] ?? rec['thumbnail_url'] ?? '') as string
-            const displayed_location = { icon: '', location: (rec['location'] ?? 'Online') as string }
+            const displayed_location = { icon: '', location: isOnlineFlag ? 'Online' : ((rec['location'] as string) ?? 'In-Person') }
             const open_state = (rec['open_state'] ?? ((rec['is_open'] === true) ? 'open' : 'closed')) as string
             const time_left_to_submission = (rec['time_left_to_submission'] ?? '') as string
-            const submission_period_dates = (rec['submission_period_dates'] ?? '') as string
+            const submission_period_dates = (rec['submission_period_dates'] ?? ((startsAt || endsAt) ? `${formatDate(startsAt)} - ${formatDate(endsAt)}` : '')) as string
 
             const themes = Array.isArray(rec['themes']) ? (rec['themes'] as unknown[]).map((t, i:number) => {
               if (typeof t === 'string') return { id: i, name: t }
