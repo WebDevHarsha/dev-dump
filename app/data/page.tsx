@@ -1,4 +1,5 @@
 import React from 'react'
+import Image from 'next/image'
 
 type Theme = {
   id: number
@@ -31,21 +32,11 @@ type Hackathon = {
   start_a_submission_url: string
 }
 
-type DevpostResponse = {
-  source: string
-  data: {
-    hackathons: Hackathon[]
-    meta: {
-      total_count: number
-      per_page: number
-      fuzzy: boolean
-    }
-  }
-}
+
 
 async function fetchHackathons(): Promise<Hackathon[]> {
-  // Replace this URL with your Dropbox JSON file URL
-  const DROPBOX_JSON_URL = 'https://www.dropbox.com/scl/fi/btk9utjoupf53m6zi03ki/hack.json?rlkey=omwn112qg0bc16drwou7jpvms&st=izfqx1ww&dl=0'
+  // Replace this URL with your Dropbox JSON file URL (ensure dl=1 to fetch raw JSON)
+  const DROPBOX_JSON_URL = 'https://www.dropbox.com/scl/fi/btk9utjoupf53m6zi03ki/hack.json?rlkey=omwn112qg0bc16drwou7jpvms&st=izfqx1ww&dl=1'
   
   const res = await fetch(DROPBOX_JSON_URL, {
     cache: 'no-store'
@@ -55,8 +46,29 @@ async function fetchHackathons(): Promise<Hackathon[]> {
     throw new Error(`Failed to fetch JSON: ${res.status}`)
   }
 
-  const json: DevpostResponse = await res.json()
-  return json.data.hackathons
+  const json: unknown = await res.json()
+
+  if (Array.isArray(json) && json.length > 0 && typeof json[0] === 'object' && json[0] !== null) {
+    const first = json[0] as Record<string, unknown>
+    if (first.data && typeof first.data === 'object' && first.data !== null) {
+      const data = first.data as Record<string, unknown>
+      if (Array.isArray(data.hackathons)) {
+        return data.hackathons as Hackathon[]
+      }
+    }
+  }
+
+  if (typeof json === 'object' && json !== null) {
+    const obj = json as Record<string, unknown>
+    if (obj.data && typeof obj.data === 'object' && obj.data !== null) {
+      const data = obj.data as Record<string, unknown>
+      if (Array.isArray(data.hackathons)) {
+        return data.hackathons as Hackathon[]
+      }
+    }
+  }
+
+  throw new Error('Unexpected JSON structure')
 }
 
 function stripHtmlTags(str: string): string {
@@ -69,8 +81,12 @@ export default async function DataPage() {
 
   try {
     hackathons = await fetchHackathons()
-  } catch (e: any) {
-    error = e?.message || 'Unknown error'
+  } catch (e: unknown) {
+    if (e instanceof Error) {
+      error = e.message
+    } else {
+      error = 'Unknown error'
+    }
   }
 
   return (
@@ -112,10 +128,11 @@ export default async function DataPage() {
                 {/* Thumbnail */}
                 <div className="relative h-48 bg-gray-900 overflow-hidden">
                   {thumbnailUrl && (
-                    <img
+                    <Image
                       src={thumbnailUrl}
                       alt={hackathon.title}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
                     />
                   )}
                   {hackathon.featured && (

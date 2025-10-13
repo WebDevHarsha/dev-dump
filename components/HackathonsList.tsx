@@ -35,17 +35,7 @@ type Hackathon = {
   start_a_submission_url: string
 }
 
-type DevpostResponse = {
-  source: string
-  data: {
-    hackathons: Hackathon[]
-    meta: {
-      total_count: number
-      per_page: number
-      fuzzy: boolean
-    }
-  }
-}
+
 
 async function fetchHackathons(): Promise<Hackathon[]> {
   try {
@@ -61,18 +51,30 @@ async function fetchHackathons(): Promise<Hackathon[]> {
       return []
     }
 
-    const json: any = await res.json()
-    
+    const json: unknown = await res.json()
+
     // The JSON is an array with one object: [{"source": "devpost", "data": {...}}]
-    if (Array.isArray(json) && json.length > 0 && json[0].data && json[0].data.hackathons) {
-      return json[0].data.hackathons
+    if (Array.isArray(json) && json.length > 0 && typeof json[0] === 'object' && json[0] !== null) {
+      const first = json[0] as Record<string, unknown>
+      if (first.data && typeof first.data === 'object' && first.data !== null) {
+        const data = first.data as Record<string, unknown>
+        if (Array.isArray(data.hackathons)) {
+          return data.hackathons as Hackathon[]
+        }
+      }
     }
-    
+
     // Fallback: if it's directly the object format
-    if (json.data && json.data.hackathons) {
-      return json.data.hackathons
+    if (typeof json === 'object' && json !== null) {
+      const obj = json as Record<string, unknown>
+      if (obj.data && typeof obj.data === 'object' && obj.data !== null) {
+        const data = obj.data as Record<string, unknown>
+        if (Array.isArray(data.hackathons)) {
+          return data.hackathons as Hackathon[]
+        }
+      }
     }
-    
+
     console.error('Unexpected JSON structure:', json)
     return []
   } catch (error) {
@@ -120,6 +122,7 @@ export default async function HackathonsList() {
                       {/* Thumbnail */}
                       {thumbnailUrl && (
                         <div className="relative -mx-6 -mt-6 mb-4 h-32 overflow-hidden border-b-4 border-foreground">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={thumbnailUrl}
                             alt={hack.title}

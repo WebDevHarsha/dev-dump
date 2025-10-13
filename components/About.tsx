@@ -34,7 +34,7 @@ export default function About() {
             <Card className="p-6 border-4 border-foreground -rotate-2 bg-card sticker">
               <div className="bg-primary text-primary-foreground w-12 h-12 flex items-center justify-center border-2 border-foreground mb-4 -rotate-6"><Flame className="w-6 h-6" /></div>
               <h3 className="text-2xl font-black mb-3 font-mono">GLOBAL COMMUNITY</h3>
-              <p className="text-muted-foreground leading-relaxed">Join 50K+ hackers worldwide. Virtual, in-person, or hybrid - we've got you covered.</p>
+              <p className="text-muted-foreground leading-relaxed">Join 50K+ hackers worldwide. Virtual, in-person, or hybrid - we&apos;ve got you covered.</p>
             </Card>
           </div>
         </div>

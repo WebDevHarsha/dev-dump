@@ -21,7 +21,7 @@ const Button = ({ children, className = "", variant = "default", size = "default
   const classNames = `${baseStyles} ${variantStyles} ${sizeStyles} ${className}`
 
   // If href is present, render an anchor element so links work correctly inside linked cards.
-  if ((props as any).href) {
+  if ('href' in props) {
     const { href, ...rest } = props as AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }
     return (
       <a className={classNames} href={href} {...rest}>
