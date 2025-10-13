@@ -55,13 +55,14 @@ async function fetchHackathons(): Promise<Hackathon[]> {
         // Provide a fetch implementation for the SDK in Node/Next server runtime.
         // Some SDK versions expect response.buffer() which the Web fetch Response doesn't implement.
         // Wrap global fetch to add a .buffer() method so the SDK can call it.
-        const fetchWithBuffer = async (input: any, init?: any) => {
-          const res = await (globalThis as any).fetch(input, init)
+        const fetchWithBuffer = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+          const globalFetch = (globalThis as unknown as { fetch: typeof fetch }).fetch
+          const res = await globalFetch(input as RequestInfo, init)
           try {
             // attach buffer() that returns a Node Buffer
-            ;(res as any).buffer = async () => Buffer.from(await res.arrayBuffer())
-          } catch (e) {
-            // ignore
+            ;(res as Response & { buffer?: () => Promise<Buffer> }).buffer = async () => Buffer.from(await (res as Response).arrayBuffer())
+          } catch (e: unknown) {
+            console.log(e)
           }
           return res
         }
@@ -72,13 +73,23 @@ async function fetchHackathons(): Promise<Hackathon[]> {
         if (DROPBOX_JSON_URL.includes('dropbox.com')) {
           const res = await dbx.sharingGetSharedLinkFile({ url: DROPBOX_JSON_URL })
           // SDK v10+ may return result.fileBinary or result.fileBlob
-          // The SDK sometimes returns the content directly on `res.result.fileBinary` or as `res.result` string
-          const resultAny: any = (res as any).result ?? res
+          // The SDK sometimes returns the content directly on `res.result` string
+          type DropboxSdkResult = string | { fileBinary?: ArrayBuffer | Uint8Array | string; fileBlob?: Blob; [key: string]: unknown }
+          const resultAny: DropboxSdkResult = ((res as { result?: unknown }).result ?? res) as DropboxSdkResult
           let buffer: Buffer | null = null
-          if (resultAny.fileBinary) {
-            buffer = Buffer.from(resultAny.fileBinary)
-          } else if (resultAny.fileBlob) {
-            const ab = await resultAny.fileBlob.arrayBuffer()
+
+          if (resultAny && typeof resultAny === 'object' && 'fileBinary' in resultAny && resultAny.fileBinary) {
+            const fb = (resultAny as { fileBinary?: ArrayBuffer | Uint8Array | string }).fileBinary
+            if (typeof fb === 'string') {
+              buffer = Buffer.from(fb)
+            } else if (fb instanceof Uint8Array) {
+              buffer = Buffer.from(fb)
+            } else if (fb instanceof ArrayBuffer) {
+              buffer = Buffer.from(new Uint8Array(fb))
+            }
+          } else if (resultAny && typeof resultAny === 'object' && 'fileBlob' in resultAny && resultAny.fileBlob) {
+            const blob = (resultAny as { fileBlob?: Blob }).fileBlob as Blob
+            const ab = await blob.arrayBuffer()
             buffer = Buffer.from(ab)
           } else if (typeof resultAny === 'string') {
             // Some SDK behaviours return the text directly
@@ -92,12 +103,21 @@ async function fetchHackathons(): Promise<Hackathon[]> {
           // Try filesDownload by path if the URL looks like a path (/folder/file.json)
           if (DROPBOX_JSON_URL.startsWith('/')) {
             const res = await dbx.filesDownload({ path: DROPBOX_JSON_URL })
-            const resultAny: any = (res as any).result ?? res
+            type DropboxFilesDownloadResult = { fileBinary?: ArrayBuffer | Uint8Array | string; fileBlob?: Blob; [key: string]: unknown } | string
+            const resultAny: DropboxFilesDownloadResult = (((res as unknown) as { result?: unknown }).result ?? res) as DropboxFilesDownloadResult
             let buffer: Buffer | null = null
-            if (resultAny.fileBinary) {
-              buffer = Buffer.from(resultAny.fileBinary)
-            } else if (resultAny.fileBlob) {
-              const ab = await resultAny.fileBlob.arrayBuffer()
+            if (typeof resultAny === 'object' && resultAny !== null && 'fileBinary' in resultAny && resultAny.fileBinary) {
+              const fb = (resultAny as { fileBinary?: ArrayBuffer | Uint8Array | string }).fileBinary
+              if (typeof fb === 'string') {
+                buffer = Buffer.from(fb)
+              } else if (fb instanceof Uint8Array) {
+                buffer = Buffer.from(fb)
+              } else if (fb instanceof ArrayBuffer) {
+                buffer = Buffer.from(new Uint8Array(fb))
+              }
+            } else if (typeof resultAny === 'object' && resultAny !== null && 'fileBlob' in resultAny && resultAny.fileBlob) {
+              const blob = (resultAny as { fileBlob?: Blob }).fileBlob as Blob
+              const ab = await blob.arrayBuffer()
               buffer = Buffer.from(ab)
             }
             if (buffer) json = JSON.parse(buffer.toString('utf8'))
@@ -123,25 +143,27 @@ async function fetchHackathons(): Promise<Hackathon[]> {
       if (contentType.includes('application/json')) json = await res.json()
       else {
         const text = await res.text()
-        try { json = JSON.parse(text) } catch (err) { console.error('Failed to parse response as JSON, response preview:', text.slice(0,300)); return [] }
+        try { json = JSON.parse(text) } catch (err) { console.error('Failed to parse response as JSON, response preview: '+err, text.slice(0,300)); return [] }
       }
     }
 
     // The JSON may be an array of source objects (e.g. [{ source: 'devfolio', data: {...} }, { source: 'devpost', data: {...} }])
     if (Array.isArray(json) && json.length > 0) {
       // helper: deep-search for open_hackathons array inside an object
-      const findOpenHackathons = (obj: any): any[] | null => {
+      const findOpenHackathons = (obj: unknown): unknown[] | null => {
         if (!obj || typeof obj !== 'object') return null
-        if (Array.isArray(obj.open_hackathons)) return obj.open_hackathons
-        for (const k of Object.keys(obj)) {
+        const record = obj as Record<string, unknown>
+        const maybe = record['open_hackathons']
+        if (Array.isArray(maybe)) return maybe as unknown[]
+        for (const k of Object.keys(record)) {
           try {
-            const v = obj[k]
+            const v = record[k]
             if (v && typeof v === 'object') {
               const found = findOpenHackathons(v)
               if (found) return found
             }
           } catch (e) {
-            // ignore
+            console.log(e)
           }
         }
         return null
@@ -150,45 +172,71 @@ async function fetchHackathons(): Promise<Hackathon[]> {
       const devpostLists: Hackathon[] = []
       const devfolioLists: Hackathon[] = []
 
-      for (const item of json as any[]) {
+      for (const item of json as unknown[]) {
         if (!item || typeof item !== 'object') continue
-        const data = item.data ?? item
+        const record = item as Record<string, unknown>
+        const data = (record.data ?? record) as Record<string, unknown>
 
         // devpost style
-        if (data && typeof data === 'object' && Array.isArray(data.hackathons)) {
-          devpostLists.push(...(data.hackathons as Hackathon[]))
+        if (data && typeof data === 'object' && Array.isArray(data['hackathons'])) {
+          devpostLists.push(...(data['hackathons'] as Hackathon[]))
         }
 
         // devfolio style: search for open_hackathons anywhere inside the object
         const open = findOpenHackathons(data)
         if (open && Array.isArray(open) && open.length > 0) {
           // map devfolio open_hackathons entries into our Hackathon shape
-          const mapped = open.map((h: any, idx: number) => {
-            return {
-              id: h.id ?? h.uuid ?? h.slug ?? idx,
-              title: h.name ?? h.title ?? 'Untitled',
-              url: h.external_url ?? h.url ?? '#',
-              thumbnail_url: h.logo ?? h.thumbnail_url ?? '',
-              displayed_location: { icon: '', location: h.location ?? 'Online' },
-              open_state: h.open_state ?? (h.is_open ? 'open' : 'closed'),
-              time_left_to_submission: h.time_left_to_submission ?? '',
-              submission_period_dates: h.submission_period_dates ?? '',
-              themes: Array.isArray(h.themes) ? h.themes.map((t: any, i:number) => {
-                if (typeof t === 'string') return { id: i, name: t }
-                if (t && typeof t === 'object') {
-                  const maybe = t.theme ?? t
-                  return { id: maybe.id ?? i, name: maybe.name ?? String(maybe) }
+          const mapped = open.map((h: unknown, idx: number) => {
+            const rec = h as Record<string, unknown>
+
+            const id = rec['id'] ?? rec['uuid'] ?? rec['slug'] ?? idx
+            const title = (rec['name'] ?? rec['title'] ?? 'Untitled') as string
+            const url = (rec['external_url'] ?? rec['url'] ?? '#') as string
+            const thumbnail_url = (rec['logo'] ?? rec['thumbnail_url'] ?? '') as string
+            const displayed_location = { icon: '', location: (rec['location'] ?? 'Online') as string }
+            const open_state = (rec['open_state'] ?? ((rec['is_open'] === true) ? 'open' : 'closed')) as string
+            const time_left_to_submission = (rec['time_left_to_submission'] ?? '') as string
+            const submission_period_dates = (rec['submission_period_dates'] ?? '') as string
+
+            const themes = Array.isArray(rec['themes']) ? (rec['themes'] as unknown[]).map((t, i:number) => {
+              if (typeof t === 'string') return { id: i, name: t }
+              if (t && typeof t === 'object') {
+                const maybe = (t as Record<string, unknown>)['theme'] ?? t
+                if (maybe && typeof maybe === 'object') {
+                  return { id: ((maybe as Record<string, unknown>)['id'] ?? i) as number, name: ((maybe as Record<string, unknown>)['name'] ?? String(maybe)) as string }
                 }
-                return { id: i, name: String(t) }
-              }) : [],
-              prize_amount: h.prize_amount ?? h.prizes ?? '',
-              prizes_counts: { cash: h.prizes_counts?.cash ?? 0, other: h.prizes_counts?.other ?? 0 },
-              registrations_count: h.registrations_count ?? h.num_registrations ?? 0,
-              organization_name: h.organization_name ?? h.organization ?? h.host ?? '',
-              featured: !!h.featured,
-              winners_announced: !!h.winners_announced,
-              submission_gallery_url: h.submission_gallery_url ?? '',
-              start_a_submission_url: h.start_a_submission_url ?? h.registration_url ?? (h.external_url ?? h.url ?? '#'),
+                return { id: i, name: String(maybe) }
+              }
+              return { id: i, name: String(t) }
+            }) : []
+
+            const prize_amount = (rec['prize_amount'] ?? rec['prizes'] ?? '') as string
+            const prizes_counts = { cash: Number((rec['prizes_counts'] as Record<string, unknown>)?.cash ?? 0), other: Number((rec['prizes_counts'] as Record<string, unknown>)?.other ?? 0) }
+            const registrations_count = Number(rec['registrations_count'] ?? rec['num_registrations'] ?? 0)
+            const organization_name = (rec['organization_name'] ?? rec['organization'] ?? rec['host'] ?? '') as string
+            const featured = !!rec['featured']
+            const winners_announced = !!rec['winners_announced']
+            const submission_gallery_url = (rec['submission_gallery_url'] ?? '') as string
+            const start_a_submission_url = (rec['start_a_submission_url'] ?? rec['registration_url'] ?? (rec['external_url'] ?? rec['url'] ?? '#')) as string
+
+            return {
+              id,
+              title,
+              url,
+              thumbnail_url,
+              displayed_location,
+              open_state,
+              time_left_to_submission,
+              submission_period_dates,
+              themes,
+              prize_amount,
+              prizes_counts,
+              registrations_count,
+              organization_name,
+              featured,
+              winners_announced,
+              submission_gallery_url,
+              start_a_submission_url,
             } as Hackathon
           })
           devfolioLists.push(...mapped)
@@ -216,54 +264,63 @@ async function fetchHackathons(): Promise<Hackathon[]> {
     if (Array.isArray(json) && json.length > 0 && typeof json[0] === 'object') {
       const arr = json as unknown[]
       // simple heuristic: if items look like hackathon entries, normalize them
-      const looksLikeHack = (item: any) => item && (item.title || item.name) && (item.url || item.external_url)
+      const looksLikeHack = (item: unknown): item is Record<string, unknown> => {
+        if (!item || typeof item !== 'object') return false
+        const rec = item as Record<string, unknown>
+        return Boolean((rec.title || rec.name) && (rec.url || rec.external_url))
+      }
       if (arr.every(looksLikeHack)) {
-        const normalized = arr.map((h: any, idx) => {
-          const id = h.id ?? h.uuid ?? h.slug ?? idx
-          const title = h.title ?? h.name ?? 'Untitled Hack'
-          const url = h.url ?? h.external_url ?? '#'
-          const thumbnail_url = h.thumbnail_url ?? h.logo ?? ''
-          const displayed_location = { icon: '', location: h.location ?? h.displayed_location?.location ?? 'Online' }
-          const open_state = h.open_state ?? (h.is_open ? 'open' : 'closed')
-          const time_left_to_submission = h.time_left_to_submission ?? h.time_left ?? ''
-          const submission_period_dates = h.submission_period_dates ?? h.dates ?? ''
-          const themes = Array.isArray(h.themes) ? h.themes.map((t: any, i: number) => {
-            if (typeof t === 'string') return { id: i, name: t }
-            if (t && typeof t === 'object') {
-              const maybe = t.theme ?? t
-              return { id: maybe.id ?? i, name: maybe.name ?? String(maybe) }
-            }
-            return { id: i, name: String(t) }
-          }) : []
-          const prize_amount = h.prize_amount ?? h.prizes ?? ''
-          const prizes_counts = { cash: h.prizes_counts?.cash ?? 0, other: h.prizes_counts?.other ?? 0 }
-          const registrations_count = h.registrations_count ?? h.num_registrations ?? 0
-          const organization_name = h.organization_name ?? h.organization ?? h.host ?? ''
-          const featured = !!h.featured
-          const winners_announced = !!h.winners_announced
-          const submission_gallery_url = h.submission_gallery_url ?? ''
-          const start_a_submission_url = h.start_a_submission_url ?? h.registration_url ?? url
-
-          return {
-            id,
-            title,
-            url,
-            thumbnail_url,
-            displayed_location,
-            open_state,
-            time_left_to_submission,
-            submission_period_dates,
-            themes,
-            prize_amount,
-            prizes_counts,
-            registrations_count,
-            organization_name,
-            featured,
-            winners_announced,
-            submission_gallery_url,
-            start_a_submission_url,
-          } as Hackathon
-        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const normalized = arr.map((h: unknown, idx: number) => {
+                  const rec = h as Record<string, unknown>
+                  const id = rec['id'] ?? rec['uuid'] ?? rec['slug'] ?? idx
+                  const title = (rec['title'] ?? rec['name'] ?? 'Untitled Hack') as string
+                  const url = (rec['url'] ?? rec['external_url'] ?? '#') as string
+                  const thumbnail_url = (rec['thumbnail_url'] ?? rec['logo'] ?? '') as string
+                  const displayed_location = { icon: '', location: (rec['location'] ?? ((rec['displayed_location'] as Record<string, unknown>)?.location) ?? 'Online') as string }
+                  const open_state = (rec['open_state'] ?? ((rec['is_open'] as unknown) ? 'open' : 'closed')) as string
+                  const time_left_to_submission = (rec['time_left_to_submission'] ?? rec['time_left'] ?? '') as string
+                  const submission_period_dates = (rec['submission_period_dates'] ?? rec['dates'] ?? '') as string
+                  const themes = Array.isArray(rec['themes']) ? (rec['themes'] as unknown[]).map((t: unknown, i: number) => {
+                    if (typeof t === 'string') return { id: i, name: t }
+                    if (t && typeof t === 'object') {
+                      const maybe = (t as Record<string, unknown>)['theme'] ?? t
+                      if (maybe && typeof maybe === 'object') {
+                        return { id: ((maybe as Record<string, unknown>)['id'] ?? i) as number, name: ((maybe as Record<string, unknown>)['name'] ?? String(maybe)) as string }
+                      }
+                      return { id: i, name: String(maybe) }
+                    }
+                    return { id: i, name: String(t) }
+                  }) : []
+                  const prize_amount = (rec['prize_amount'] ?? rec['prizes'] ?? '') as string
+                  const prizes_counts = { cash: (rec['prizes_counts'] as Record<string, unknown>)?.cash ?? 0, other: (rec['prizes_counts'] as Record<string, unknown>)?.other ?? 0 }
+                  const registrations_count = (rec['registrations_count'] ?? rec['num_registrations'] ?? 0) as number
+                  const organization_name = (rec['organization_name'] ?? rec['organization'] ?? rec['host'] ?? '') as string
+                  const featured = !!rec['featured']
+                  const winners_announced = !!rec['winners_announced']
+                  const submission_gallery_url = (rec['submission_gallery_url'] ?? '') as string
+                  const start_a_submission_url = (rec['start_a_submission_url'] ?? rec['registration_url'] ?? url) as string
+        
+                  return {
+                    id,
+                    title,
+                    url,
+                    thumbnail_url,
+                    displayed_location,
+                    open_state,
+                    time_left_to_submission,
+                    submission_period_dates,
+                    themes,
+                    prize_amount,
+                    prizes_counts,
+                    registrations_count,
+                    organization_name,
+                    featured,
+                    winners_announced,
+                    submission_gallery_url,
+                    start_a_submission_url,
+                  } as Hackathon
+                })
 
         return normalized
       }
