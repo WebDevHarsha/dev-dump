@@ -40,26 +40,71 @@ type Hackathon = {
 
 async function fetchHackathons(): Promise<Hackathon[]> {
   try {
-    const docs = await getHackathonsFromDb()
+    const docs = (await getHackathonsFromDb()) as unknown[]
+    // helper to safely pull typed values from a generic record
+    const get = <T = unknown>(obj: Record<string, unknown>, key: string): T | undefined => {
+      return obj[key] as T | undefined
+    }
+
     // Normalize documents stored in MongoDB to our Hackathon shape
-    const normalized: Hackathon[] = docs.map((rec: any, idx: number) => {
-      const id = rec.id ?? rec._id ?? idx
-      const title = rec.title ?? rec.name ?? 'Untitled'
-      const url = rec.url ?? rec.external_url ?? '#'
-      const thumbnail_url = rec.thumbnail_url ?? rec.logo ?? ''
-      const displayed_location = rec.displayed_location ?? (rec.location ? { icon: '', location: rec.location } : { icon: '', location: 'Online' })
-      const open_state = rec.open_state ?? (rec.isOpen ? 'open' : (rec.open ? 'open' : 'closed'))
-      const time_left_to_submission = rec.time_left_to_submission ?? rec.time_left ?? ''
-      const submission_period_dates = rec.submission_period_dates ?? rec.dates ?? ''
-      const themes = Array.isArray(rec.themes) ? rec.themes.map((t: any, i: number) => ({ id: t?.id ?? i, name: t?.name ?? String(t) })) : []
-      const prize_amount = rec.prize_amount ?? rec.prizes ?? ''
-      const prizes_counts = rec.prizes_counts ?? { cash: 0, other: 0 }
-      const registrations_count = Number(rec.registrations_count ?? rec.participants_count ?? rec.num_registrations ?? 0)
-      const organization_name = rec.organization_name ?? rec.organization ?? rec.host ?? ''
-      const featured = !!rec.featured
-      const winners_announced = !!rec.winners_announced
-      const submission_gallery_url = rec.submission_gallery_url ?? ''
-      const start_a_submission_url = rec.start_a_submission_url ?? rec.registration_url ?? rec.external_apply_url ?? rec.url ?? '#'
+    const normalized: Hackathon[] = docs.map((recRaw, idx: number) => {
+      const rec = (recRaw as Record<string, unknown>) ?? {}
+
+      const id = get<number | string>(rec, 'id') ?? get<number | string>(rec, '_id') ?? idx
+      const title = get<string>(rec, 'title') ?? get<string>(rec, 'name') ?? 'Untitled'
+      const url = get<string>(rec, 'url') ?? get<string>(rec, 'external_url') ?? '#'
+      const thumbnail_url = get<string>(rec, 'thumbnail_url') ?? get<string>(rec, 'logo') ?? ''
+      
+      // displayed_location normalization
+      let displayed_location = { icon: '', location: 'Online' }
+      const dlRaw = get<unknown>(rec, 'displayed_location')
+      if (dlRaw && typeof dlRaw === 'object') {
+        const dlObj = dlRaw as Record<string, unknown>
+        const iconVal = dlObj['icon']
+        const locationVal = dlObj['location']
+        displayed_location = {
+          icon: typeof iconVal === 'string' ? iconVal : '',
+          location: typeof locationVal === 'string' ? locationVal : String(locationVal ?? 'Online'),
+        }
+      } else {
+        const loc = get<string>(rec, 'location')
+        displayed_location = { icon: '', location: loc ?? 'Online' }
+      }
+
+      const open_state = get<string>(rec, 'open_state') ?? (get<boolean>(rec, 'isOpen') ? 'open' : (get<boolean>(rec, 'open') ? 'open' : 'closed'))
+      const time_left_to_submission = get<string>(rec, 'time_left_to_submission') ?? get<string>(rec, 'time_left') ?? ''
+      const submission_period_dates = get<string>(rec, 'submission_period_dates') ?? get<string>(rec, 'dates') ?? ''
+
+      // themes normalization
+      const themesRaw = get<unknown>(rec, 'themes')
+      const themes: Theme[] = Array.isArray(themesRaw)
+        ? themesRaw.map((t: unknown, i: number) => {
+            if (t && typeof t === 'object') {
+              const tobj = t as Record<string, unknown>
+              return {
+                id: (tobj['id'] as number) ?? i,
+                name: (tobj['name'] as string) ?? String(t),
+              }
+            }
+            return { id: i, name: String(t) }
+          })
+        : []
+
+      const prize_amount = get<string>(rec, 'prize_amount') ?? get<string>(rec, 'prizes') ?? ''
+      const prizesCountsRaw = get<unknown>(rec, 'prizes_counts')
+      const prizes_counts = prizesCountsRaw && typeof prizesCountsRaw === 'object'
+        ? {
+            cash: Number((prizesCountsRaw as Record<string, unknown>)['cash'] ?? 0),
+            other: Number((prizesCountsRaw as Record<string, unknown>)['other'] ?? 0),
+          }
+        : { cash: 0, other: 0 }
+
+      const registrations_count = Number(get<number>(rec, 'registrations_count') ?? get<number>(rec, 'participants_count') ?? get<number>(rec, 'num_registrations') ?? 0)
+      const organization_name = get<string>(rec, 'organization_name') ?? get<string>(rec, 'organization') ?? get<string>(rec, 'host') ?? ''
+      const featured = !!get<boolean>(rec, 'featured')
+      const winners_announced = !!get<boolean>(rec, 'winners_announced')
+      const submission_gallery_url = get<string>(rec, 'submission_gallery_url') ?? ''
+      const start_a_submission_url = get<string>(rec, 'start_a_submission_url') ?? get<string>(rec, 'registration_url') ?? get<string>(rec, 'external_apply_url') ?? get<string>(rec, 'url') ?? '#'
 
       return {
         id,

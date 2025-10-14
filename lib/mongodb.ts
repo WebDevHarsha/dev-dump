@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, Document } from 'mongodb'
 
 const uri = process.env.MONGODB_URI
 const dbName = process.env.MONGODB_DB || 'dumpy'
@@ -19,7 +19,7 @@ async function getClient(): Promise<MongoClient> {
   return client
 }
 
-export async function getHackathonsFromDb(): Promise<any[]> {
+export async function getHackathonsFromDb(): Promise<Document[]> {
   try {
     const client = await getClient()
     const db = client.db(dbName)
