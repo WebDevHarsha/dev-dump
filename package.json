@@ -11,6 +11,7 @@
   "dependencies": {
     "dropbox": "^10.34.0",
     "lucide-react": "^0.545.0",
+    "mongodb": "^6.20.0",
     "next": "15.5.4",
     "postcss": "^8.5.6",
     "react": "19.1.0",

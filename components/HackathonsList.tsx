@@ -3,7 +3,7 @@ import Card from "./ui/Card"
 import Badge from "./ui/Badge"
 import Button from "./ui/Button"
 import { Calendar, MapPin, Users, Trophy } from "lucide-react"
-import { Dropbox } from 'dropbox'
+import { getHackathonsFromDb } from '../lib/mongodb'
 
 type Theme = {
   id: number
@@ -40,342 +40,51 @@ type Hackathon = {
 
 async function fetchHackathons(): Promise<Hackathon[]> {
   try {
-    // Make sure URL ends with dl=1 to get raw JSON
-    const DROPBOX_JSON_URL = 'https://www.dropbox.com/scl/fi/s80mllk5preqn5hgyi934/hack.json?rlkey=setdetypr0cj9d9ij5wo42pgs&st=mg0y4hr2&dl=0'
+    const docs = await getHackathonsFromDb()
+    // Normalize documents stored in MongoDB to our Hackathon shape
+    const normalized: Hackathon[] = docs.map((rec: any, idx: number) => {
+      const id = rec.id ?? rec._id ?? idx
+      const title = rec.title ?? rec.name ?? 'Untitled'
+      const url = rec.url ?? rec.external_url ?? '#'
+      const thumbnail_url = rec.thumbnail_url ?? rec.logo ?? ''
+      const displayed_location = rec.displayed_location ?? (rec.location ? { icon: '', location: rec.location } : { icon: '', location: 'Online' })
+      const open_state = rec.open_state ?? (rec.isOpen ? 'open' : (rec.open ? 'open' : 'closed'))
+      const time_left_to_submission = rec.time_left_to_submission ?? rec.time_left ?? ''
+      const submission_period_dates = rec.submission_period_dates ?? rec.dates ?? ''
+      const themes = Array.isArray(rec.themes) ? rec.themes.map((t: any, i: number) => ({ id: t?.id ?? i, name: t?.name ?? String(t) })) : []
+      const prize_amount = rec.prize_amount ?? rec.prizes ?? ''
+      const prizes_counts = rec.prizes_counts ?? { cash: 0, other: 0 }
+      const registrations_count = Number(rec.registrations_count ?? rec.participants_count ?? rec.num_registrations ?? 0)
+      const organization_name = rec.organization_name ?? rec.organization ?? rec.host ?? ''
+      const featured = !!rec.featured
+      const winners_announced = !!rec.winners_announced
+      const submission_gallery_url = rec.submission_gallery_url ?? ''
+      const start_a_submission_url = rec.start_a_submission_url ?? rec.registration_url ?? rec.external_apply_url ?? rec.url ?? '#'
 
-    // If the server has a DROPBOX_ACCESS_TOKEN and we have a dropbox share link,
-    // prefer using the server-side Dropbox API route to avoid exposing tokens client-side
-    const isDropboxLink = DROPBOX_JSON_URL.includes('dropbox.com') || DROPBOX_JSON_URL.includes('dropboxusercontent.com')
+      return {
+        id,
+        title,
+        url,
+        thumbnail_url,
+        displayed_location,
+        open_state,
+        time_left_to_submission,
+        submission_period_dates,
+        themes,
+        prize_amount,
+        prizes_counts,
+        registrations_count,
+        organization_name,
+        featured,
+        winners_announced,
+        submission_gallery_url,
+        start_a_submission_url,
+      } as Hackathon
+    })
 
-    // If we have a server-side Dropbox token, use the SDK to download the file
-    let json: unknown
-    const token = process.env.DROPBOX_ACCESS_TOKEN
-    if (isDropboxLink && token) {
-      try {
-        // Provide a fetch implementation for the SDK in Node/Next server runtime.
-        // Some SDK versions expect response.buffer() which the Web fetch Response doesn't implement.
-        // Wrap global fetch to add a .buffer() method so the SDK can call it.
-        const fetchWithBuffer = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-          const globalFetch = (globalThis as unknown as { fetch: typeof fetch }).fetch
-          const res = await globalFetch(input as RequestInfo, init)
-          try {
-            // attach buffer() that returns a Node Buffer
-            ;(res as Response & { buffer?: () => Promise<Buffer> }).buffer = async () => Buffer.from(await (res as Response).arrayBuffer())
-          } catch (e: unknown) {
-            console.log(e)
-          }
-          return res
-        }
-
-        const dbx = new Dropbox({ accessToken: token as string, fetch: fetchWithBuffer })
-
-        // If the link looks like a shared link (dropbox.com), use sharingGetSharedLinkFile
-        if (DROPBOX_JSON_URL.includes('dropbox.com')) {
-          const res = await dbx.sharingGetSharedLinkFile({ url: DROPBOX_JSON_URL })
-          // SDK v10+ may return result.fileBinary or result.fileBlob
-          // The SDK sometimes returns the content directly on `res.result` string
-          type DropboxSdkResult = string | { fileBinary?: ArrayBuffer | Uint8Array | string; fileBlob?: Blob; [key: string]: unknown }
-          const resultAny: DropboxSdkResult = ((res as { result?: unknown }).result ?? res) as DropboxSdkResult
-          let buffer: Buffer | null = null
-
-          if (resultAny && typeof resultAny === 'object' && 'fileBinary' in resultAny && resultAny.fileBinary) {
-            const fb = (resultAny as { fileBinary?: ArrayBuffer | Uint8Array | string }).fileBinary
-            if (typeof fb === 'string') {
-              buffer = Buffer.from(fb)
-            } else if (fb instanceof Uint8Array) {
-              buffer = Buffer.from(fb)
-            } else if (fb instanceof ArrayBuffer) {
-              buffer = Buffer.from(new Uint8Array(fb))
-            }
-          } else if (resultAny && typeof resultAny === 'object' && 'fileBlob' in resultAny && resultAny.fileBlob) {
-            const blob = (resultAny as { fileBlob?: Blob }).fileBlob as Blob
-            const ab = await blob.arrayBuffer()
-            buffer = Buffer.from(ab)
-          } else if (typeof resultAny === 'string') {
-            // Some SDK behaviours return the text directly
-            json = JSON.parse(resultAny)
-          }
-
-          if (!json && buffer) {
-            json = JSON.parse(buffer.toString('utf8'))
-          }
-        } else {
-          // Try filesDownload by path if the URL looks like a path (/folder/file.json)
-          if (DROPBOX_JSON_URL.startsWith('/')) {
-            const res = await dbx.filesDownload({ path: DROPBOX_JSON_URL })
-            type DropboxFilesDownloadResult = { fileBinary?: ArrayBuffer | Uint8Array | string; fileBlob?: Blob; [key: string]: unknown } | string
-            const resultAny: DropboxFilesDownloadResult = (((res as unknown) as { result?: unknown }).result ?? res) as DropboxFilesDownloadResult
-            let buffer: Buffer | null = null
-            if (typeof resultAny === 'object' && resultAny !== null && 'fileBinary' in resultAny && resultAny.fileBinary) {
-              const fb = (resultAny as { fileBinary?: ArrayBuffer | Uint8Array | string }).fileBinary
-              if (typeof fb === 'string') {
-                buffer = Buffer.from(fb)
-              } else if (fb instanceof Uint8Array) {
-                buffer = Buffer.from(fb)
-              } else if (fb instanceof ArrayBuffer) {
-                buffer = Buffer.from(new Uint8Array(fb))
-              }
-            } else if (typeof resultAny === 'object' && resultAny !== null && 'fileBlob' in resultAny && resultAny.fileBlob) {
-              const blob = (resultAny as { fileBlob?: Blob }).fileBlob as Blob
-              const ab = await blob.arrayBuffer()
-              buffer = Buffer.from(ab)
-            }
-            if (buffer) json = JSON.parse(buffer.toString('utf8'))
-          } else {
-            // Fallback to HTTP fetch for dropboxusercontent links
-            const r = await fetch(DROPBOX_JSON_URL, { cache: 'no-store' })
-            const text = await r.text()
-            json = JSON.parse(text)
-          }
-        }
-      } catch (err) {
-        console.error('Dropbox SDK download error:', err)
-        return []
-      }
-    } else {
-      // No token or not a dropbox link — fetch directly
-      const res = await fetch(DROPBOX_JSON_URL, { cache: 'no-store' })
-      if (!res.ok) {
-        console.error(`Failed to fetch JSON: ${res.status}`)
-        return []
-      }
-      const contentType = res.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) json = await res.json()
-      else {
-        const text = await res.text()
-        try { json = JSON.parse(text) } catch (err) { console.error('Failed to parse response as JSON, response preview: '+err, text.slice(0,300)); return [] }
-      }
-    }
-
-    // The JSON may be an array of source objects (e.g. [{ source: 'devfolio', data: {...} }, { source: 'devpost', data: {...} }])
-    if (Array.isArray(json) && json.length > 0) {
-      // helper: deep-search for open_hackathons array inside an object
-      const findOpenHackathons = (obj: unknown): unknown[] | null => {
-        if (!obj || typeof obj !== 'object') return null
-        const record = obj as Record<string, unknown>
-        const maybe = record['open_hackathons']
-        if (Array.isArray(maybe)) return maybe as unknown[]
-        for (const k of Object.keys(record)) {
-          try {
-            const v = record[k]
-            if (v && typeof v === 'object') {
-              const found = findOpenHackathons(v)
-              if (found) return found
-            }
-          } catch (e) {
-            console.log(e)
-          }
-        }
-        return null
-      }
-
-      const devpostLists: Hackathon[] = []
-      const devfolioLists: Hackathon[] = []
-
-      for (const item of json as unknown[]) {
-        if (!item || typeof item !== 'object') continue
-        const record = item as Record<string, unknown>
-        const data = (record.data ?? record) as Record<string, unknown>
-
-        // devpost style
-        if (data && typeof data === 'object' && Array.isArray(data['hackathons'])) {
-          devpostLists.push(...(data['hackathons'] as Hackathon[]))
-        }
-
-        // devfolio style: search for open_hackathons anywhere inside the object
-        const open = findOpenHackathons(data)
-        if (open && Array.isArray(open) && open.length > 0) {
-          // map devfolio open_hackathons entries into our Hackathon shape
-          const mapped = open.map((h: unknown, idx: number) => {
-            const rec = h as Record<string, unknown>
-
-            const id = rec['id'] ?? rec['uuid'] ?? rec['slug'] ?? idx
-            const title = (rec['name'] ?? rec['title'] ?? 'Untitled') as string
-            const slug = (rec['slug'] ?? '') as string
-            const startsAt = (rec['starts_at'] ?? '') as string
-            const endsAt = (rec['ends_at'] ?? '') as string
-            const isOnlineFlag = rec['is_online'] === true
-            const settings = (rec['settings'] && typeof rec['settings'] === 'object') ? (rec['settings'] as Record<string, unknown>) : undefined
-            const regStartsRaw = settings?.reg_starts_at as string | undefined
-            const regEndsRaw = settings?.reg_ends_at as string | undefined
-            const parseDate = (s?: string) => {
-              if (!s) return undefined
-              const t = Date.parse(s)
-              return Number.isNaN(t) ? undefined : new Date(t)
-            }
-            const regStarts = parseDate(regStartsRaw)
-            const regEnds = parseDate(regEndsRaw)
-            const now = new Date()
-            const registrationOpen = regStarts && regEnds ? (now >= regStarts && now <= regEnds) : undefined
-            const formatDate = (iso?: string) => {
-              if (!iso) return ''
-              try {
-                const d = new Date(iso)
-                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-              } catch {
-                return iso
-              }
-            }
-            const url = (settings?.site as string) ?? (rec['external_url'] as string) ?? (rec['url'] as string) ?? (slug ? `https://devfolio.co/${slug}` : '#')
-            const thumbnail_url = (rec['logo'] ?? rec['thumbnail_url'] ?? '') as string
-            const displayed_location = { icon: '', location: isOnlineFlag ? 'Online' : ((rec['location'] as string) ?? 'In-Person') }
-            const computedOpen = registrationOpen === undefined ? (rec['is_open'] === true || String(rec['open_state']) === 'open') : registrationOpen
-            const open_state = (rec['open_state'] ?? (computedOpen ? 'open' : 'closed')) as string
-            let time_left_to_submission = (rec['time_left_to_submission'] ?? '') as string
-            if (!time_left_to_submission && regEnds) {
-              const diff = regEnds.getTime() - now.getTime()
-              if (diff > 0) {
-                const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
-                time_left_to_submission = `${days} days left`
-              } else {
-                time_left_to_submission = 'Closed'
-              }
-            }
-            const submission_period_dates = (rec['submission_period_dates'] ?? ((startsAt || endsAt) ? `${formatDate(startsAt)} - ${formatDate(endsAt)}` : '')) as string
-
-            const themes = Array.isArray(rec['themes']) ? (rec['themes'] as unknown[]).map((t, i:number) => {
-              if (typeof t === 'string') return { id: i, name: t }
-              if (t && typeof t === 'object') {
-                const maybe = (t as Record<string, unknown>)['theme'] ?? t
-                if (maybe && typeof maybe === 'object') {
-                  return { id: ((maybe as Record<string, unknown>)['id'] ?? i) as number, name: ((maybe as Record<string, unknown>)['name'] ?? String(maybe)) as string }
-                }
-                return { id: i, name: String(maybe) }
-              }
-              return { id: i, name: String(t) }
-            }) : []
-
-            const prize_amount = (rec['prize_amount'] ?? rec['prizes'] ?? '') as string
-            const prizes_counts = { cash: Number((rec['prizes_counts'] as Record<string, unknown>)?.cash ?? 0), other: Number((rec['prizes_counts'] as Record<string, unknown>)?.other ?? 0) }
-            const registrations_count = Number(rec['participants_count'] ?? rec['registrations_count'] ?? rec['num_registrations'] ?? 0)
-            const organization_name = (rec['organization_name'] ?? rec['organization'] ?? rec['host'] ?? '') as string
-            const featured = !!rec['featured']
-            const winners_announced = !!rec['winners_announced']
-            const submission_gallery_url = (rec['submission_gallery_url'] ?? '') as string
-            const start_a_submission_url = (rec['start_a_submission_url'] ?? rec['registration_url'] ?? (settings?.external_apply_url as string) ?? (settings?.site as string) ?? (rec['external_url'] ?? rec['url'] ?? (slug ? `https://devfolio.co/${slug}` : '#'))) as string
-
-            return {
-              id,
-              title,
-              url,
-              thumbnail_url,
-              displayed_location,
-              open_state,
-              time_left_to_submission,
-              submission_period_dates,
-              themes,
-              prize_amount,
-              prizes_counts,
-              registrations_count,
-              organization_name,
-              featured,
-              winners_announced,
-              submission_gallery_url,
-              start_a_submission_url,
-            } as Hackathon
-          })
-          devfolioLists.push(...mapped)
-        }
-      }
-
-      // If we collected any lists, merge and dedupe (prefer devpost entries when duplicates exist)
-      const merged: Hackathon[] = [...devpostLists, ...devfolioLists]
-      if (merged.length > 0) {
-        const byKey = new Map<string, Hackathon>()
-        for (const h of merged) {
-          const key = (h.url && String(h.url)) || String(h.id)
-          if (!byKey.has(key)) byKey.set(key, h)
-          else {
-            const existing = byKey.get(key)!
-            if (!existing.thumbnail_url && h.thumbnail_url) existing.thumbnail_url = h.thumbnail_url
-            if ((!existing.prize_amount || existing.prize_amount === '') && h.prize_amount) existing.prize_amount = h.prize_amount
-          }
-        }
-        return Array.from(byKey.values())
-      }
-    }
-
-    // If the JSON is directly an array of hackathon-like objects (e.g. [{...}, {...}])
-    if (Array.isArray(json) && json.length > 0 && typeof json[0] === 'object') {
-      const arr = json as unknown[]
-      // simple heuristic: if items look like hackathon entries, normalize them
-      const looksLikeHack = (item: unknown): item is Record<string, unknown> => {
-        if (!item || typeof item !== 'object') return false
-        const rec = item as Record<string, unknown>
-        return Boolean((rec.title || rec.name) && (rec.url || rec.external_url))
-      }
-      if (arr.every(looksLikeHack)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const normalized = arr.map((h: unknown, idx: number) => {
-                  const rec = h as Record<string, unknown>
-                  const id = rec['id'] ?? rec['uuid'] ?? rec['slug'] ?? idx
-                  const title = (rec['title'] ?? rec['name'] ?? 'Untitled Hack') as string
-                  const url = (rec['url'] ?? rec['external_url'] ?? '#') as string
-                  const thumbnail_url = (rec['thumbnail_url'] ?? rec['logo'] ?? '') as string
-                  const displayed_location = { icon: '', location: (rec['location'] ?? ((rec['displayed_location'] as Record<string, unknown>)?.location) ?? 'Online') as string }
-                  const open_state = (rec['open_state'] ?? ((rec['is_open'] as unknown) ? 'open' : 'closed')) as string
-                  const time_left_to_submission = (rec['time_left_to_submission'] ?? rec['time_left'] ?? '') as string
-                  const submission_period_dates = (rec['submission_period_dates'] ?? rec['dates'] ?? '') as string
-                  const themes = Array.isArray(rec['themes']) ? (rec['themes'] as unknown[]).map((t: unknown, i: number) => {
-                    if (typeof t === 'string') return { id: i, name: t }
-                    if (t && typeof t === 'object') {
-                      const maybe = (t as Record<string, unknown>)['theme'] ?? t
-                      if (maybe && typeof maybe === 'object') {
-                        return { id: ((maybe as Record<string, unknown>)['id'] ?? i) as number, name: ((maybe as Record<string, unknown>)['name'] ?? String(maybe)) as string }
-                      }
-                      return { id: i, name: String(maybe) }
-                    }
-                    return { id: i, name: String(t) }
-                  }) : []
-                  const prize_amount = (rec['prize_amount'] ?? rec['prizes'] ?? '') as string
-                  const prizes_counts = { cash: (rec['prizes_counts'] as Record<string, unknown>)?.cash ?? 0, other: (rec['prizes_counts'] as Record<string, unknown>)?.other ?? 0 }
-                  const registrations_count = (rec['registrations_count'] ?? rec['num_registrations'] ?? 0) as number
-                  const organization_name = (rec['organization_name'] ?? rec['organization'] ?? rec['host'] ?? '') as string
-                  const featured = !!rec['featured']
-                  const winners_announced = !!rec['winners_announced']
-                  const submission_gallery_url = (rec['submission_gallery_url'] ?? '') as string
-                  const start_a_submission_url = (rec['start_a_submission_url'] ?? rec['registration_url'] ?? url) as string
-        
-                  return {
-                    id,
-                    title,
-                    url,
-                    thumbnail_url,
-                    displayed_location,
-                    open_state,
-                    time_left_to_submission,
-                    submission_period_dates,
-                    themes,
-                    prize_amount,
-                    prizes_counts,
-                    registrations_count,
-                    organization_name,
-                    featured,
-                    winners_announced,
-                    submission_gallery_url,
-                    start_a_submission_url,
-                  } as Hackathon
-                })
-
-        return normalized
-      }
-    }
-
-    // Fallback: if it's directly the object format
-    if (typeof json === 'object' && json !== null) {
-      const obj = json as Record<string, unknown>
-      if (obj.data && typeof obj.data === 'object' && obj.data !== null) {
-        const data = obj.data as Record<string, unknown>
-        if (Array.isArray(data.hackathons)) {
-          return data.hackathons as Hackathon[]
-        }
-      }
-    }
-
-    console.error('Unexpected JSON structure:', json)
-    return []
+    return normalized
   } catch (error) {
-    console.error('Error fetching hackathons:', error)
+    console.error('Error fetching hackathons from MongoDB:', error)
     return []
   }
 }
@@ -408,9 +117,9 @@ export default async function HackathonsList() {
           <div className="grid md:grid-cols-2 gap-6">
             {hackathons.map((hack, i) => {
               const prizeText = stripHtmlTags(hack.prize_amount)
-              const thumbnailUrl = hack.thumbnail_url.startsWith('//')
-                ? `https:${hack.thumbnail_url}`
-                : hack.thumbnail_url
+              const thumbnailUrl = hack.thumbnail_url
+                ? (typeof hack.thumbnail_url === 'string' && hack.thumbnail_url.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url)
+                : null
               const isOpen = hack.open_state === "open"
               
               return (
