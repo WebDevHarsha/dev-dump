@@ -31,14 +31,67 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
   const [visible, setVisible] = useState(6)
   const visibleItems = hackathons.slice(0, visible)
 
+  // Filters
+  const [locationFilter, setLocationFilter] = useState<'all' | 'online' | 'in-person'>('all')
+  const [daysFilter, setDaysFilter] = useState<'all' | 'lt7' | '7to30' | 'gt30'>('all')
+
+  function parseDaysLeft(str?: string): number | null {
+    if (!str) return null
+    // common patterns: "6 days left", "2 days left", "Ends in 3 days", "Ends in 1 month"
+    const m = str.match(/(\d+)\s*day/)
+    if (m) return Number(m[1])
+    const m2 = str.match(/(\d+)\s*hour/)
+    if (m2) return 0
+    return null
+  }
+
+  const filtered = hackathons.filter((h) => {
+    // location filter
+    const loc = (typeof h.displayed_location === 'string') ? h.displayed_location : (h.displayed_location?.location || '')
+    const isOnline = !loc || /online/i.test(String(loc))
+    if (locationFilter === 'online' && !isOnline) return false
+    if (locationFilter === 'in-person' && isOnline) return false
+
+    // days left filter
+    if (daysFilter !== 'all') {
+      const days = parseDaysLeft(h.time_left_to_submission)
+      if (days === null) return false
+      if (daysFilter === 'lt7' && !(days < 7)) return false
+      if (daysFilter === '7to30' && !(days >= 7 && days <= 30)) return false
+      if (daysFilter === 'gt30' && !(days > 30)) return false
+    }
+
+    return true
+  })
+
+  const visibleFiltered = filtered.slice(0, visible)
+
   function stripHtmlTags(str: string | undefined) {
     return (str || '').replace(/<[^>]*>/g, '')
   }
 
   return (
     <>
+      {/* Filters */}
+      <div className="mb-6 flex gap-6 flex-wrap items-center">
+        <fieldset className="flex items-center gap-3">
+          <legend className="font-mono font-bold mr-2">Location</legend>
+          <label className="font-mono text-sm"><input type="radio" name="loc" checked={locationFilter === 'all'} onChange={() => setLocationFilter('all')} /> All</label>
+          <label className="font-mono text-sm"><input type="radio" name="loc" checked={locationFilter === 'online'} onChange={() => setLocationFilter('online')} /> Online</label>
+          <label className="font-mono text-sm"><input type="radio" name="loc" checked={locationFilter === 'in-person'} onChange={() => setLocationFilter('in-person')} /> In-Person</label>
+        </fieldset>
+
+        <fieldset className="flex items-center gap-3">
+          <legend className="font-mono font-bold mr-2">Days left</legend>
+          <label className="font-mono text-sm"><input type="radio" name="days" checked={daysFilter === 'all'} onChange={() => setDaysFilter('all')} /> All</label>
+          <label className="font-mono text-sm"><input type="radio" name="days" checked={daysFilter === 'lt7'} onChange={() => setDaysFilter('lt7')} /> &lt; 7 days</label>
+          <label className="font-mono text-sm"><input type="radio" name="days" checked={daysFilter === '7to30'} onChange={() => setDaysFilter('7to30')} /> 7–30 days</label>
+          <label className="font-mono text-sm"><input type="radio" name="days" checked={daysFilter === 'gt30'} onChange={() => setDaysFilter('gt30')} /> &gt; 30 days</label>
+        </fieldset>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-6">
-        {visibleItems.map((hack, i) => {
+        {visibleFiltered.map((hack, i) => {
           const prizeText = stripHtmlTags(hack.prize_amount)
           const thumbnailUrl = hack.thumbnail_url?.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url
           const isOpen = hack.open_state === 'open'
@@ -103,7 +156,7 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
       </div>
 
       <div className="text-center mt-12">
-        {visible < hackathons.length ? (
+        {visible < filtered.length ? (
           <Button size="lg" variant="outline" className="bg-background border-4 border-foreground font-mono font-bold text-lg px-8 py-6 rotate-1 sticker" onClick={() => setVisible((v) => v + 6)}>LOAD MORE CHAOS →</Button>
         ) : (
           <div className="text-sm text-muted-foreground">No more hackathons</div>

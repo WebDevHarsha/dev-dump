@@ -1,63 +1,48 @@
-import React from "react"
+import React from 'react'
 // Force dynamic server rendering so MongoDB is queried at request-time on Vercel
 export const dynamic = 'force-dynamic'
-import Card from "./ui/Card"
-import Badge from "./ui/Badge"
-import Button from "./ui/Button"
-import { Calendar, MapPin, Users, Trophy } from "lucide-react"
+import HackathonsListClient from './HackathonsListClient'
+import Badge from './ui/Badge'
 import { getHackathonsFromDb } from '../lib/mongodb'
 
-type Theme = {
-  id: number
-  name: string
-}
+type Theme = { id: number | string; name: string }
 
 type Hackathon = {
-  id: number
+  id: number | string
   title: string
   url: string
-  thumbnail_url: string
-  displayed_location: {
-    icon: string
-    location: string
-  }
-  open_state: string
-  time_left_to_submission: string
-  submission_period_dates: string
-  themes: Theme[]
-  prize_amount: string
-  prizes_counts: {
-    cash: number
-    other: number
-  }
-  registrations_count: number
-  organization_name: string
-  featured: boolean
-  winners_announced: boolean
-  submission_gallery_url: string
-  start_a_submission_url: string
+  thumbnail_url?: string
+  displayed_location: { icon?: string; location: string }
+  open_state?: string
+  time_left_to_submission?: string
+  submission_period_dates?: string
+  themes?: Theme[]
+  prize_amount?: string
+  prizes_counts?: { cash: number; other: number }
+  registrations_count?: number
+  organization_name?: string
+  featured?: boolean
+  winners_announced?: boolean
+  submission_gallery_url?: string
+  start_a_submission_url?: string
 }
-
-
 
 async function fetchHackathons(): Promise<Hackathon[]> {
   try {
     const docs = (await getHackathonsFromDb()) as unknown[]
-    // helper to safely pull typed values from a generic record
+
     const get = <T = unknown>(obj: Record<string, unknown>, key: string): T | undefined => {
       return obj[key] as T | undefined
     }
 
-    // Normalize documents stored in MongoDB to our Hackathon shape
     const normalized: Hackathon[] = docs.map((recRaw, idx: number) => {
       const rec = (recRaw as Record<string, unknown>) ?? {}
 
-      const id = get<number | string>(rec, 'id') ?? get<number | string>(rec, '_id') ?? idx
-      const title = get<string>(rec, 'title') ?? get<string>(rec, 'name') ?? 'Untitled'
-      const url = get<string>(rec, 'url') ?? get<string>(rec, 'external_url') ?? '#'
-      const thumbnail_url = get<string>(rec, 'thumbnail_url') ?? get<string>(rec, 'logo') ?? ''
+      const id = (get<number | string>(rec, 'id') ?? get<number | string>(rec, '_id') ?? idx) as number | string
+      const title = (get<string>(rec, 'title') ?? get<string>(rec, 'name') ?? 'Untitled') as string
+      const url = (get<string>(rec, 'url') ?? get<string>(rec, 'external_url') ?? '#') as string
+      const thumbnail_url = (get<string>(rec, 'thumbnail_url') ?? get<string>(rec, 'logo') ?? '') as string
 
-      // displayed_location normalization
       let displayed_location = { icon: '', location: 'Online' }
       const dlRaw = get<unknown>(rec, 'displayed_location')
       if (typeof dlRaw === 'string') {
@@ -75,40 +60,39 @@ async function fetchHackathons(): Promise<Hackathon[]> {
         displayed_location = { icon: '', location: loc ?? 'Online' }
       }
 
-      const open_state = get<string>(rec, 'open_state') ?? (get<boolean>(rec, 'isOpen') ? 'open' : (get<boolean>(rec, 'open') ? 'open' : 'closed'))
-      const time_left_to_submission = get<string>(rec, 'time_left_to_submission') ?? get<string>(rec, 'time_left') ?? ''
-      const submission_period_dates = get<string>(rec, 'submission_period_dates') ?? get<string>(rec, 'dates') ?? ''
+      const open_state = (get<string>(rec, 'open_state') ?? (get<boolean>(rec, 'isOpen') ? 'open' : (get<boolean>(rec, 'open') ? 'open' : 'closed'))) as string
+      const time_left_to_submission = (get<string>(rec, 'time_left_to_submission') ?? get<string>(rec, 'time_left') ?? '') as string
+      const submission_period_dates = (get<string>(rec, 'submission_period_dates') ?? get<string>(rec, 'dates') ?? '') as string
 
-      // themes normalization
       const themesRaw = get<unknown>(rec, 'themes')
       const themes: Theme[] = Array.isArray(themesRaw)
-        ? themesRaw.map((t: unknown, i: number) => {
-          if (t && typeof t === 'object') {
-            const tobj = t as Record<string, unknown>
-            return {
-              id: (tobj['id'] as number) ?? i,
-              name: (tobj['name'] as string) ?? String(t),
+        ? (themesRaw as unknown[]).map((t: unknown, i: number) => {
+            if (t && typeof t === 'object') {
+              const tobj = t as Record<string, unknown>
+              return {
+                id: (tobj['id'] as number) ?? i,
+                name: (tobj['name'] as string) ?? String(t),
+              }
             }
-          }
-          return { id: i, name: String(t) }
-        })
+            return { id: i, name: String(t) }
+          })
         : []
 
-      const prize_amount = get<string>(rec, 'prize_amount') ?? get<string>(rec, 'prizes') ?? ''
+      const prize_amount = (get<string>(rec, 'prize_amount') ?? get<string>(rec, 'prizes') ?? '') as string
       const prizesCountsRaw = get<unknown>(rec, 'prizes_counts')
       const prizes_counts = prizesCountsRaw && typeof prizesCountsRaw === 'object'
         ? {
-          cash: Number((prizesCountsRaw as Record<string, unknown>)['cash'] ?? 0),
-          other: Number((prizesCountsRaw as Record<string, unknown>)['other'] ?? 0),
-        }
+            cash: Number((prizesCountsRaw as Record<string, unknown>)['cash'] ?? 0),
+            other: Number((prizesCountsRaw as Record<string, unknown>)['other'] ?? 0),
+          }
         : { cash: 0, other: 0 }
 
       const registrations_count = Number(get<number>(rec, 'registrations_count') ?? get<number>(rec, 'participants_count') ?? get<number>(rec, 'num_registrations') ?? 0)
-      const organization_name = get<string>(rec, 'organization_name') ?? get<string>(rec, 'organization') ?? get<string>(rec, 'host') ?? ''
+      const organization_name = (get<string>(rec, 'organization_name') ?? get<string>(rec, 'organization') ?? get<string>(rec, 'host') ?? '') as string
       const featured = !!get<boolean>(rec, 'featured')
       const winners_announced = !!get<boolean>(rec, 'winners_announced')
-      const submission_gallery_url = get<string>(rec, 'submission_gallery_url') ?? ''
-      const start_a_submission_url = get<string>(rec, 'start_a_submission_url') ?? get<string>(rec, 'registration_url') ?? get<string>(rec, 'external_apply_url') ?? get<string>(rec, 'url') ?? '#'
+      const submission_gallery_url = (get<string>(rec, 'submission_gallery_url') ?? '') as string
+      const start_a_submission_url = (get<string>(rec, 'start_a_submission_url') ?? get<string>(rec, 'registration_url') ?? get<string>(rec, 'external_apply_url') ?? get<string>(rec, 'url') ?? '#') as string
 
       return {
         id,
@@ -138,14 +122,9 @@ async function fetchHackathons(): Promise<Hackathon[]> {
   }
 }
 
-// No client-side fallback per user request
-
-function stripHtmlTags(str: string): string {
-  return str.replace(/<[^>]*>/g, '')
-}
-
 export default async function HackathonsList() {
   const hackathons = await fetchHackathons()
+
   return (
     <section id="hackathons" className="py-16">
       <div className="container mx-auto px-4">
@@ -163,99 +142,8 @@ export default async function HackathonsList() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {hackathons.map((hack, i) => {
-              const prizeText = stripHtmlTags(hack.prize_amount)
-              const thumbnailUrl = hack.thumbnail_url
-                ? (typeof hack.thumbnail_url === 'string' && hack.thumbnail_url.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url)
-                : null
-              const isOpen = hack.open_state === "open"
-
-              return (
-                <Card key={hack.id} className={`p-6 border-4 border-foreground ${i % 2 === 0 ? "rotate-1" : "-rotate-1"} sticker hover:scale-105 transition-transform cursor-pointer bg-card`}>
-                  <div className="space-y-4">
-                    {/* Main clickable content (links to hack.url) */}
-                    <a href={hack.url} target="_blank" rel="noopener noreferrer" className="block">
-                      {/* Thumbnail */}
-                      {thumbnailUrl && (
-                        <div className="relative -mx-6 -mt-6 mb-4 h-32 overflow-hidden border-b-4 border-foreground">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={thumbnailUrl}
-                            alt={hack.title}
-                            className="w-full h-full object-cover"
-                          />
-                          {hack.featured && (
-                            <Badge className="absolute top-2 right-2 bg-yellow-500 text-black border-2 border-foreground font-mono font-bold rotate-3">
-                              FEATURED
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 className="text-2xl font-black mb-1 font-mono">{hack.title}</h3>
-                          <p className="text-muted-foreground text-sm">by {hack.organization_name}</p>
-                        </div>
-                        <Badge className={`${isOpen ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"} border-2 border-foreground font-mono font-bold rotate-3 shrink-0`}>
-                          {isOpen ? "OPEN" : "CLOSED"}
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-primary" />
-                          <span className="font-mono text-xs">{hack.submission_period_dates}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-secondary" />
-                          <span className="font-mono text-xs">{hack.displayed_location.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4 text-primary" />
-                          <span className="font-mono">{hack.registrations_count.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Trophy className="w-4 h-4 text-secondary" />
-                          <span className="font-mono font-bold">{prizeText}</span>
-                        </div>
-                      </div>
-
-                      {/* Time Left */}
-                      <div className="text-sm font-bold text-primary">
-                        ⏰ {hack.time_left_to_submission}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {hack.themes.map((theme) => (
-                          <Badge key={theme.id} variant="outline" className="border-2 border-foreground font-mono text-xs rotate-1">
-                            {theme.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </a>
-
-                    {/* Action buttons (as anchors) */}
-                    <div>
-                      <a
-                        href={hack.start_a_submission_url || hack.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block text-center w-full border-2 border-foreground font-mono font-bold py-2 px-4"
-                      >
-                        {isOpen ? "REGISTER NOW →" : "LEARN MORE →"}
-                      </a>
-                    </div>
-                  </div>
-                </Card>
-              )
-            })}
-          </div>
-
-          <div className="text-center mt-12">
-            <Button size="lg" variant="outline" className="bg-background border-4 border-foreground font-mono font-bold text-lg px-8 py-6 rotate-1 sticker">LOAD MORE CHAOS →</Button>
-          </div>
+          {/* Client-side list + filters */}
+          <HackathonsListClient hackathons={hackathons} />
         </div>
       </div>
     </section>
