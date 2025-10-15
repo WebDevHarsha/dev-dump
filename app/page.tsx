@@ -1,4 +1,6 @@
 import React from "react"
+// Ensure this route is rendered on-demand so server components fetch fresh data
+export const dynamic = 'force-dynamic'
 import Header from "../components/Header"
 import Hero from "../components/Hero"
 import Stats from "../components/Stats"

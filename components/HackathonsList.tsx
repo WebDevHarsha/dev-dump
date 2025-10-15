@@ -1,4 +1,6 @@
 import React from "react"
+// Force dynamic server rendering so MongoDB is queried at request-time on Vercel
+export const dynamic = 'force-dynamic'
 import Card from "./ui/Card"
 import Badge from "./ui/Badge"
 import Button from "./ui/Button"
