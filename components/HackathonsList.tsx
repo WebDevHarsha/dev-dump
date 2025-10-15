@@ -56,11 +56,13 @@ async function fetchHackathons(): Promise<Hackathon[]> {
       const title = get<string>(rec, 'title') ?? get<string>(rec, 'name') ?? 'Untitled'
       const url = get<string>(rec, 'url') ?? get<string>(rec, 'external_url') ?? '#'
       const thumbnail_url = get<string>(rec, 'thumbnail_url') ?? get<string>(rec, 'logo') ?? ''
-      
+
       // displayed_location normalization
       let displayed_location = { icon: '', location: 'Online' }
       const dlRaw = get<unknown>(rec, 'displayed_location')
-      if (dlRaw && typeof dlRaw === 'object') {
+      if (typeof dlRaw === 'string') {
+        displayed_location = { icon: '', location: dlRaw.trim() || 'Online' }
+      } else if (dlRaw && typeof dlRaw === 'object') {
         const dlObj = dlRaw as Record<string, unknown>
         const iconVal = dlObj['icon']
         const locationVal = dlObj['location']
@@ -81,24 +83,24 @@ async function fetchHackathons(): Promise<Hackathon[]> {
       const themesRaw = get<unknown>(rec, 'themes')
       const themes: Theme[] = Array.isArray(themesRaw)
         ? themesRaw.map((t: unknown, i: number) => {
-            if (t && typeof t === 'object') {
-              const tobj = t as Record<string, unknown>
-              return {
-                id: (tobj['id'] as number) ?? i,
-                name: (tobj['name'] as string) ?? String(t),
-              }
+          if (t && typeof t === 'object') {
+            const tobj = t as Record<string, unknown>
+            return {
+              id: (tobj['id'] as number) ?? i,
+              name: (tobj['name'] as string) ?? String(t),
             }
-            return { id: i, name: String(t) }
-          })
+          }
+          return { id: i, name: String(t) }
+        })
         : []
 
       const prize_amount = get<string>(rec, 'prize_amount') ?? get<string>(rec, 'prizes') ?? ''
       const prizesCountsRaw = get<unknown>(rec, 'prizes_counts')
       const prizes_counts = prizesCountsRaw && typeof prizesCountsRaw === 'object'
         ? {
-            cash: Number((prizesCountsRaw as Record<string, unknown>)['cash'] ?? 0),
-            other: Number((prizesCountsRaw as Record<string, unknown>)['other'] ?? 0),
-          }
+          cash: Number((prizesCountsRaw as Record<string, unknown>)['cash'] ?? 0),
+          other: Number((prizesCountsRaw as Record<string, unknown>)['other'] ?? 0),
+        }
         : { cash: 0, other: 0 }
 
       const registrations_count = Number(get<number>(rec, 'registrations_count') ?? get<number>(rec, 'participants_count') ?? get<number>(rec, 'num_registrations') ?? 0)
@@ -168,7 +170,7 @@ export default async function HackathonsList() {
                 ? (typeof hack.thumbnail_url === 'string' && hack.thumbnail_url.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url)
                 : null
               const isOpen = hack.open_state === "open"
-              
+
               return (
                 <Card key={hack.id} className={`p-6 border-4 border-foreground ${i % 2 === 0 ? "rotate-1" : "-rotate-1"} sticker hover:scale-105 transition-transform cursor-pointer bg-card`}>
                   <div className="space-y-4">
