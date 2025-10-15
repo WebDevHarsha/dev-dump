@@ -74,19 +74,45 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
     <>
       {/* Filters */}
       <div className="mb-6 flex gap-6 flex-wrap items-center">
-        <fieldset className="flex items-center gap-3">
+        <fieldset className="flex items-center gap-3" aria-label="Location filter">
           <legend className="font-mono font-bold mr-2">Location</legend>
-          <label className="font-mono text-sm"><input type="radio" name="loc" checked={locationFilter === 'all'} onChange={() => setLocationFilter('all')} /> All</label>
-          <label className="font-mono text-sm"><input type="radio" name="loc" checked={locationFilter === 'online'} onChange={() => setLocationFilter('online')} /> Online</label>
-          <label className="font-mono text-sm"><input type="radio" name="loc" checked={locationFilter === 'in-person'} onChange={() => setLocationFilter('in-person')} /> In-Person</label>
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="loc" checked={locationFilter === 'all'} onChange={() => setLocationFilter('all')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">All</span>
+          </label>
+
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="loc" checked={locationFilter === 'online'} onChange={() => setLocationFilter('online')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">Online</span>
+          </label>
+
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="loc" checked={locationFilter === 'in-person'} onChange={() => setLocationFilter('in-person')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">In-Person</span>
+          </label>
         </fieldset>
 
-        <fieldset className="flex items-center gap-3">
+        <fieldset className="flex items-center gap-3" aria-label="Days left filter">
           <legend className="font-mono font-bold mr-2">Days left</legend>
-          <label className="font-mono text-sm"><input type="radio" name="days" checked={daysFilter === 'all'} onChange={() => setDaysFilter('all')} /> All</label>
-          <label className="font-mono text-sm"><input type="radio" name="days" checked={daysFilter === 'lt7'} onChange={() => setDaysFilter('lt7')} /> &lt; 7 days</label>
-          <label className="font-mono text-sm"><input type="radio" name="days" checked={daysFilter === '7to30'} onChange={() => setDaysFilter('7to30')} /> 7–30 days</label>
-          <label className="font-mono text-sm"><input type="radio" name="days" checked={daysFilter === 'gt30'} onChange={() => setDaysFilter('gt30')} /> &gt; 30 days</label>
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="days" checked={daysFilter === 'all'} onChange={() => setDaysFilter('all')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">All</span>
+          </label>
+
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="days" checked={daysFilter === 'lt7'} onChange={() => setDaysFilter('lt7')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">&lt; 7 days</span>
+          </label>
+
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="days" checked={daysFilter === '7to30'} onChange={() => setDaysFilter('7to30')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">7–30 days</span>
+          </label>
+
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="days" checked={daysFilter === 'gt30'} onChange={() => setDaysFilter('gt30')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">&gt; 30 days</span>
+          </label>
         </fieldset>
       </div>
 
