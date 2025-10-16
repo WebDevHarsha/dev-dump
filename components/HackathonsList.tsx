@@ -1,5 +1,4 @@
 import React from 'react'
-// Force dynamic server rendering so MongoDB is queried at request-time on Vercel
 export const dynamic = 'force-dynamic'
 import HackathonsListClient from './HackathonsListClient'
 import Badge from './ui/Badge'
@@ -141,8 +140,6 @@ export default async function HackathonsList() {
               <Badge variant="outline" className="border-2 border-foreground font-mono px-4 py-2 rotate-1 hover:bg-secondary hover:text-secondary-foreground">Virtual</Badge>
             </div>
           </div>
-
-          {/* Client-side list + filters */}
           <HackathonsListClient hackathons={hackathons} />
         </div>
       </div>

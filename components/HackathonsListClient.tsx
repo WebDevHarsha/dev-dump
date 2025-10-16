@@ -128,7 +128,7 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
         </fieldset>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-3 gap-6">
         {visibleFiltered.map((hack, i) => {
           const prizeText = stripHtmlTags(hack.prize_amount)
           const thumbnailUrl = hack.thumbnail_url?.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url
@@ -195,7 +195,7 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
 
       <div className="text-center mt-12">
         {visible < filtered.length ? (
-          <Button size="lg" variant="outline" className="bg-background border-4 border-foreground font-mono font-bold text-lg px-8 py-6 rotate-1 sticker" onClick={() => setVisible((v) => v + 6)}>LOAD MORE CHAOS →</Button>
+          <Button size="lg" variant="outline" className="bg-background border-4 border-foreground font-mono font-bold text-lg px-8 py-6 rotate-1 sticker" onClick={() => setVisible((v) => v + 10)}>LOAD MORE CHAOS →</Button>
         ) : (
           <div className="text-sm text-muted-foreground">No more hackathons</div>
         )}
