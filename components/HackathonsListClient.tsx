@@ -66,12 +66,24 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
 
   const visibleFiltered = filtered.slice(0, visible)
 
+  const totalCount = hackathons.length
+  const filteredCount = filtered.length
+  const noFiltersActive = locationFilter === 'all' && daysFilter === 'all'
+
   function stripHtmlTags(str: string | undefined) {
     return (str || '').replace(/<[^>]*>/g, '')
   }
 
   return (
     <>
+      {/* Counts */}
+      <div className="mb-2">
+        {noFiltersActive ? (
+          <div className="font-mono text-sm">{totalCount} {totalCount === 1 ? 'hackathon' : 'hackathons'}</div>
+        ) : (
+          <div className="font-mono text-sm">Showing {filteredCount} {filteredCount === 1 ? 'hackathon' : 'hackathons'} of {totalCount}</div>
+        )}
+      </div>
       {/* Filters */}
       <div className="mb-6 flex gap-6 flex-wrap items-center">
         <fieldset className="flex items-center gap-3" aria-label="Location filter">
