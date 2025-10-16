@@ -20,8 +20,8 @@ export default function DevDumpLanding() {
       <Header />
       <Hero />
       <Stats />
+      {/* <About /> */}
       <HackathonsList />
-      <About />
       <Footer />
     </div>
   )

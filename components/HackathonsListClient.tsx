@@ -79,9 +79,9 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
       {/* Counts */}
       <div className="mb-2">
         {noFiltersActive ? (
-          <div className="font-mono text-sm">{totalCount} {totalCount === 1 ? 'hackathon' : 'hackathons'}</div>
+          <div className="font-mono text-md">{totalCount} {totalCount === 1 ? 'hackathon' : 'hackathons'}</div>
         ) : (
-          <div className="font-mono text-sm">Showing {filteredCount} {filteredCount === 1 ? 'hackathon' : 'hackathons'} of {totalCount}</div>
+          <div className="font-mono text-md">Showing {filteredCount} {filteredCount === 1 ? 'hackathon' : 'hackathons'} of {totalCount}</div>
         )}
       </div>
       {/* Filters */}
