@@ -9,10 +9,10 @@ export default function Stats() {
       <section className="py-12 bg-background text-foreground border-t-2 border-foreground">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="flex items-center justify-center gap-4 mb-6" aria-hidden>
-              <div className="px-6 py-3 bg-red-700 text-white font-extrabold text-3xl transform -rotate-3 shadow-sticker border-4 border-black">THANK</div>
-              <div className="px-5 py-2 bg-yellow-300 text-black font-extrabold text-2xl transform rotate-2 shadow-sticker border-4 border-black">YOU</div>
-              <div className="px-8 py-4 bg-black text-white font-extrabold text-4xl transform -rotate-1 shadow-sticker border-4 border-black">DUMPY</div>
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-6" aria-hidden>
+              <div className="px-3 py-2 sm:px-6 sm:py-3 bg-red-700 text-white font-extrabold text-xl sm:text-3xl transform md:-rotate-3 shadow-sticker border-4 border-black">THANK</div>
+              <div className="px-3 py-1.5 sm:px-5 sm:py-2 bg-yellow-300 text-black font-extrabold text-lg sm:text-2xl transform md:rotate-2 shadow-sticker border-4 border-black">YOU</div>
+              <div className="px-4 py-2 sm:px-8 sm:py-4 bg-black text-white font-extrabold text-2xl sm:text-4xl transform md:-rotate-1 shadow-sticker border-4 border-black">DUMPY</div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">

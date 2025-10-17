@@ -55,8 +55,6 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
     m = s.match(/(\d+)\s*(?:month|months|mo|mos)/)
     if (m) return Number(m[1]) * 30
 
-    // Phrases like "about 1 month left" or "about 3 weeks left" are already covered
-    // Catch phrases like "in 2 weeks" or "ends in 3 months"
     m = s.match(/in\s*(\d+)\s*day/)
     if (m) return Number(m[1])
     m = s.match(/in\s*(\d+)\s*week/)
@@ -64,7 +62,6 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
     m = s.match(/in\s*(\d+)\s*month/)
     if (m) return Number(m[1]) * 30
 
-    // If string contains words like "week" or "month" without numbers, return a conservative estimate
     if (s.includes('week')) return 7
     if (s.includes('month')) return 30
 
@@ -102,7 +99,6 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
 
   return (
     <>
-      {/* Counts */}
       <div className="mb-2">
         {noFiltersActive ? (
           <div className="font-mono text-md">{totalCount} {totalCount === 1 ? 'hackathon' : 'hackathons'}</div>
@@ -110,7 +106,6 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
           <div className="font-mono text-md">Showing {filteredCount} {filteredCount === 1 ? 'hackathon' : 'hackathons'} of {totalCount}</div>
         )}
       </div>
-      {/* Filters */}
       <div className="mb-6 flex gap-6 flex-wrap items-center">
         <fieldset className="flex items-center gap-3" aria-label="Location filter">
           <legend className="font-mono font-bold mr-2">Location</legend>
@@ -154,19 +149,18 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
         </fieldset>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {visibleFiltered.map((hack, i) => {
           const prizeText = stripHtmlTags(hack.prize_amount)
           const thumbnailUrl = hack.thumbnail_url?.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url
           const isOpen = hack.open_state === 'open'
 
           return (
-            <Card key={String(hack.id) + '-' + i} className={`p-6 border-4 border-foreground ${i % 2 === 0 ? 'rotate-1' : '-rotate-1'} sticker hover:scale-105 transition-transform cursor-pointer bg-card`}>
+            <Card key={String(hack.id) + '-' + i} className={`p-4 sm:p-6 border-4 border-foreground ${i % 2 === 0 ? 'md:rotate-1' : 'md:-rotate-1'} sticker hover:scale-105 transition-transform cursor-pointer bg-card`}>
               <div className="space-y-4">
                 <a href={hack.url} target="_blank" rel="noopener noreferrer" className="block">
                   {thumbnailUrl && (
-                    <div className="relative -mx-6 -mt-6 mb-4 h-32 overflow-hidden border-b-4 border-foreground">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <div className="relative -mx-4 -mt-4 mb-4 h-28 sm:h-32 md:-mx-6 md:-mt-6 md:h-40 overflow-hidden border-b-4 border-foreground">
                       <img src={thumbnailUrl} alt={hack.title} className="w-full h-full object-cover" />
                       {hack.featured && (
                         <Badge className="absolute top-2 right-2 bg-yellow-500 text-black border-2 border-foreground font-mono font-bold rotate-3">FEATURED</Badge>
@@ -176,13 +170,13 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
 
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="text-2xl font-black mb-1 font-mono">{hack.title}</h3>
+                      <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-1 font-mono">{hack.title}</h3>
                       <p className="text-muted-foreground text-sm">by {hack.organization_name}</p>
                     </div>
                     <Badge className={`${isOpen ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'} border-2 border-foreground font-mono font-bold rotate-3 shrink-0`}>{isOpen ? 'OPEN' : 'CLOSED'}</Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-primary" />
                       <span className="font-mono text-xs">{hack.submission_period_dates}</span>
