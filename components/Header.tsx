@@ -73,7 +73,7 @@ export default function Header() {
               Hackathons
             </Link>
             <Link
-              href="#about"
+              href="/about"
               className="font-mono font-semibold text-lg px-4 py-3 border-4 border-foreground bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
