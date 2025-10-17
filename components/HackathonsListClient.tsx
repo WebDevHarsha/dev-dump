@@ -37,11 +37,37 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
 
   function parseDaysLeft(str?: string): number | null {
     if (!str) return null
-    // common patterns: "6 days left", "2 days left", "Ends in 3 days", "Ends in 1 month"
-    const m = str.match(/(\d+)\s*day/)
+    const s = str.toLowerCase()
+
+    // Exact days: "6 days", "1 day"
+    let m = s.match(/(\d+)\s*day/)
     if (m) return Number(m[1])
-    const m2 = str.match(/(\d+)\s*hour/)
-    if (m2) return 0
+
+    // Hours -> treat as 0 days remaining
+    m = s.match(/(\d+)\s*hour/)
+    if (m) return 0
+
+    // Weeks: "2 weeks", "1 wk", "2 wks"
+    m = s.match(/(\d+)\s*(?:week|weeks|wk|wks|w)/)
+    if (m) return Number(m[1]) * 7
+
+    // Months: approximate as 30 days: "1 month", "2 mos"
+    m = s.match(/(\d+)\s*(?:month|months|mo|mos)/)
+    if (m) return Number(m[1]) * 30
+
+    // Phrases like "about 1 month left" or "about 3 weeks left" are already covered
+    // Catch phrases like "in 2 weeks" or "ends in 3 months"
+    m = s.match(/in\s*(\d+)\s*day/)
+    if (m) return Number(m[1])
+    m = s.match(/in\s*(\d+)\s*week/)
+    if (m) return Number(m[1]) * 7
+    m = s.match(/in\s*(\d+)\s*month/)
+    if (m) return Number(m[1]) * 30
+
+    // If string contains words like "week" or "month" without numbers, return a conservative estimate
+    if (s.includes('week')) return 7
+    if (s.includes('month')) return 30
+
     return null
   }
 
