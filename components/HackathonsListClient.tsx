@@ -30,6 +30,14 @@ type Hackathon = {
 export default function HackathonsListClient({ hackathons }: { hackathons: Hackathon[] }) {
   const [visible, setVisible] = useState(6)
   const visibleItems = hackathons.slice(0, visible)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  // simple debounce for search input
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim().toLowerCase()), 250)
+    return () => clearTimeout(t)
+  }, [search])
 
   // Filters
   const [locationFilter, setLocationFilter] = useState<'all' | 'online' | 'in-person'>('all')
@@ -69,6 +77,14 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
   }
 
   const filtered = hackathons.filter((h) => {
+    // search filter
+    if (debouncedSearch) {
+      const q = debouncedSearch
+      const inTitle = (h.title || '').toLowerCase().includes(q)
+      const inOrg = (h.organization_name || '').toLowerCase().includes(q)
+      const inThemes = (h.themes || []).some(t => (t.name || '').toLowerCase().includes(q))
+      if (!(inTitle || inOrg || inThemes)) return false
+    }
     // location filter
     const loc = (typeof h.displayed_location === 'string') ? h.displayed_location : (h.displayed_location?.location || '')
     const isOnline = !loc || /online/i.test(String(loc))
@@ -99,6 +115,15 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
 
   return (
     <>
+      {/* Search */}
+      <div className="mb-4">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search hackathons, orgs, themes..."
+          className="w-full md:w-1/2 font-mono px-4 py-2 border-2 border-foreground bg-background text-foreground rounded-sm"
+        />
+      </div>
       <div className="mb-2">
         {noFiltersActive ? (
           <div className="font-mono text-md">{totalCount} {totalCount === 1 ? 'hackathon' : 'hackathons'}</div>
