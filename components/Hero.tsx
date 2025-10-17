@@ -1,7 +1,6 @@
 import React from "react"
-import { Search, Zap, Code, Trophy, Flame } from "lucide-react"
-import Input from "./ui/Input"
-import Button from "./ui/Button"
+import { Zap, Code, Trophy, Flame } from "lucide-react"
+
 
 export default function Hero() {
   return (

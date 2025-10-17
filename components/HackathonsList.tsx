@@ -1,7 +1,6 @@
 import React from 'react'
 export const dynamic = 'force-dynamic'
 import HackathonsListClient from './HackathonsListClient'
-import Badge from './ui/Badge'
 import { getHackathonsFromDb } from '../lib/mongodb'
 
 type Theme = { id: number | string; name: string }

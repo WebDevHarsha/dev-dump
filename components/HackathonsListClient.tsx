@@ -1,5 +1,6 @@
 "use client"
 import React, { useState } from 'react'
+import Image from 'next/image'
 import Card from './ui/Card'
 import Badge from './ui/Badge'
 import Button from './ui/Button'
@@ -29,7 +30,6 @@ type Hackathon = {
 
 export default function HackathonsListClient({ hackathons }: { hackathons: Hackathon[] }) {
   const [visible, setVisible] = useState(6)
-  const visibleItems = hackathons.slice(0, visible)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
@@ -186,7 +186,7 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
                 <a href={hack.url} target="_blank" rel="noopener noreferrer" className="block">
                   {thumbnailUrl && (
                     <div className="relative -mx-4 -mt-4 mb-4 h-28 sm:h-32 md:-mx-6 md:-mt-6 md:h-40 overflow-hidden border-b-4 border-foreground">
-                      <img src={thumbnailUrl} alt={hack.title} className="w-full h-full object-cover" />
+                      <Image src={thumbnailUrl} alt={hack.title} fill className="object-cover" />
                       {hack.featured && (
                         <Badge className="absolute top-2 right-2 bg-yellow-500 text-black border-2 border-foreground font-mono font-bold rotate-3">FEATURED</Badge>
                       )}
@@ -194,7 +194,7 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
                   )}
 
                   <div className="flex items-start justify-between gap-4">
-                    <div>
+                   <div>
                       <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-1 font-mono">{hack.title}</h3>
                       <p className="text-muted-foreground text-sm">by {hack.organization_name}</p>
                     </div>
