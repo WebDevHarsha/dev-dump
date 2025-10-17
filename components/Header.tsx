@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from 'next/link'
 import { Menu, X } from "lucide-react"
+import Image from "next/image"
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -38,9 +39,16 @@ export default function Header() {
               href="https://www.buymeacoffee.com/devharsha"
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-primary text-primary-foreground px-6 py-2 font-mono font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              className="inline-flex items-center gap-3 bg-primary text-primary-foreground px-4 py-2 font-mono font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
             >
-              Buy me coffee
+              <Image
+                src="/bmc.png"
+                alt="bmc"
+                width={20}
+                height={20}
+                className="inline-block"
+              />
+              <span>Buy me coffee</span>
             </a>
           </nav>
 
@@ -75,10 +83,11 @@ export default function Header() {
               href="https://www.buymeacoffee.com/devharsha"
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-primary text-primary-foreground px-4 py-3 font-mono font-bold text-center border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+              className="inline-flex items-center justify-center gap-3 bg-primary text-primary-foreground px-4 py-3 font-mono font-bold text-center border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Buy me coffee
+              <Image src="/bmc.png" alt="bmc" width={18} height={18} className="inline-block" />
+              <span>Buy me coffee</span>
             </Link>
           </nav>
         )}
