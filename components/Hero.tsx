@@ -15,18 +15,10 @@ export default function Hero() {
           </div>
 
           <p className="text-lg md:text-2xl font-mono max-w-2xl mx-auto leading-relaxed text-balance">
-            The most <span className="bg-secondary text-secondary-foreground px-2 py-1 rotate-1 inline-block border-2 border-foreground">unhinged</span> hackathon platform. Discover events, dump code, and <span className="bg-primary text-primary-foreground px-2 py-1 -rotate-1 inline-block border-2 border-foreground">win big</span>.
+            Bringing  <span className="bg-secondary text-secondary-foreground px-2 py-1 rotate-1 inline-block border-2 border-foreground">hackathons</span> together so you never miss one. Discover events, dump code, and <span className="bg-primary text-primary-foreground px-2 py-1 -rotate-1 inline-block border-2 border-foreground">win big</span>.
           </p>
 
-          <div className="max-w-2xl mx-auto">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input placeholder="Search hackathons..." className="pl-10 h-14 border-4 border-foreground font-mono text-lg" />
-              </div>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground border-4 border-foreground font-mono font-black text-lg px-8 h-14 rotate-1 sticker">SEARCH</Button>
-            </div>
-          </div>
+          
 
           <div className="flex items-center justify-center gap-4 md:gap-6 py-6">
             <div className="bg-primary text-primary-foreground p-3 rotate-6 border-3 border-foreground sticker"><Zap className="w-8 h-8" /></div>
