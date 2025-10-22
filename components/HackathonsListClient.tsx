@@ -42,6 +42,8 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
   // Filters
   const [locationFilter, setLocationFilter] = useState<'all' | 'online' | 'in-person'>('all')
   const [daysFilter, setDaysFilter] = useState<'all' | 'lt7' | '7to30' | 'gt30'>('all')
+  // new: featured filter
+  const [featuredFilter, setFeaturedFilter] = useState<'all' | 'featured'>('all')
 
   function parseDaysLeft(str?: string): number | null {
     if (!str) return null
@@ -100,6 +102,9 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
       if (daysFilter === 'gt30' && !(days > 30)) return false
     }
 
+    // featured filter
+    if (featuredFilter === 'featured' && !h.featured) return false
+
     return true
   })
 
@@ -132,6 +137,18 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
         )}
       </div>
       <div className="mb-6 flex gap-6 flex-wrap items-center">
+        <fieldset className="flex items-center gap-3" aria-label="Featured filter">
+          <legend className="font-mono font-bold mr-2">Featured</legend>
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="featured" checked={featuredFilter === 'all'} onChange={() => setFeaturedFilter('all')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">All</span>
+          </label>
+
+          <label className="cursor-pointer">
+            <input className="sr-only peer" type="radio" name="featured" checked={featuredFilter === 'featured'} onChange={() => setFeaturedFilter('featured')} />
+            <span className="inline-block font-mono text-sm rounded-full px-4 py-2 border-2 border-foreground bg-background text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">Featured</span>
+          </label>
+        </fieldset>
         <fieldset className="flex items-center gap-3" aria-label="Location filter">
           <legend className="font-mono font-bold mr-2">Location</legend>
           <label className="cursor-pointer">
