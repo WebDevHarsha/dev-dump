@@ -14,7 +14,7 @@ export default function Hero() {
           </div>
 
           <p className="text-lg md:text-2xl font-mono max-w-2xl mx-auto leading-relaxed text-balance">
-            Bringing  <span className="bg-secondary text-secondary-foreground px-2 py-1 rotate-1 inline-block border-2 border-foreground">hackathons</span> together so you never miss one. Discover events, dump code, and <span className="bg-primary text-primary-foreground px-2 py-1 -rotate-1 inline-block border-2 border-foreground">win big</span>.
+            Bringing  <span className="bg-secondary text-secondary-foreground px-2 py-1 rotate-1 inline-block border-2 border-foreground">hackathons</span> together so you never miss one. Discover events, dump code, and <span className="bg-primary text-primary-foreground px-2 py-1 -rotate-1 inline-block border-2 border-foreground">win big</span>. Cause scrolling 5 websites is overrated.
           </p>
 
           
