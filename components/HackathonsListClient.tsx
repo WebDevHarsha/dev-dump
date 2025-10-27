@@ -26,6 +26,13 @@ type Hackathon = {
   winners_announced?: boolean
   submission_gallery_url?: string
   start_a_submission_url?: string
+  // common variants for start date fields from various data sources
+  startDate?: string | number | Date
+  start_date?: string
+  start?: string
+  starts_at?: string
+  startsAt?: string
+  startAt?: string
 }
 
 export default function HackathonsListClient({ hackathons }: { hackathons: Hackathon[] }) {
@@ -197,14 +204,14 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
           const thumbnailUrl = hack.thumbnail_url?.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url
           const isOpen = hack.open_state === 'open'
           // try to extract a structured start date from common fields
-          const rawStart = (hack as any).startDate || (hack as any).start_date || (hack as any).start || (hack as any).starts_at || (hack as any).startsAt || (hack as any).startAt
+          const rawStart = hack.startDate ?? hack.start_date ?? hack.start ?? hack.starts_at ?? hack.startsAt ?? hack.startAt
           let startDateISO: string | undefined
           if (rawStart) {
             try {
-              const d = new Date(rawStart)
+              const d = new Date(rawStart as string)
               if (!isNaN(d.getTime())) startDateISO = d.toISOString()
-            } catch (e) {
-              // ignore
+            } catch {
+              // ignore invalid date
             }
           }
 
@@ -223,7 +230,7 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
 
                           {/* Structured data for the hackathon (Event schema when possible) */}
                           {(() => {
-                            const ldObj: any = {
+                            const ldObj: Record<string, unknown> = {
                               "@context": "https://schema.org",
                               "@type": "Event",
                               name: hack.title,

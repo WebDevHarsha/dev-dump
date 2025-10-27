@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     icon: "/devdump.png",
     apple: "/devdump.png",
   },
-  themeColor: [{ media: '(prefers-color-scheme: light)', color: '#ffffff' }, { media: '(prefers-color-scheme: dark)', color: '#0b1220' }],
+  // themeColor moved to viewport export below (Next.js expects themeColor in viewport)
   authors: [{ name: 'Dev Dump' }],
   robots: {
     index: true,
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     description: "Because scrolling five sites is overrated.",
     images: [
       {
-        url: "/devdump.png",
+        url: "https://devdump.vasriharsha.app/devdump.png",
         width: 1200,
         height: 630,
         alt: "Dev Dump",
@@ -62,12 +62,23 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Dev Dump",
     description: "Because scrolling five sites is overrated.",
-    images: ["/devdump.png"],
+    images: ["https://devdump.vasriharsha.app/devdump.png"],
   },
 };
 
-// Absolute base used for canonical / open graph URLs in metadata
-export const metadataBase = new URL('https://devdump.vasriharsha.app/')
+// NOTE: metadataBase export removed because this Next.js version's build types
+// complain about unexpected exports. We instead use absolute URLs directly
+// in the metadata and canonical tags below.
+
+// Viewport + themeColor export (Next.js App Router expects themeColor in viewport)
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b1220' },
+  ],
+}
 
 export default function RootLayout({
   children,
@@ -79,13 +90,13 @@ export default function RootLayout({
     "@type": "WebSite",
     "name": "Dev Dump",
     "description": "Because scrolling five sites is overrated.",
-    "url": "/",
+    "url": "https://devdump.vasriharsha.app/",
     "publisher": {
       "@type": "Organization",
       "name": "Dev Dump",
       "logo": {
         "@type": "ImageObject",
-        "url": "/devdump.png"
+        "url": "https://devdump.vasriharsha.app/devdump.png"
       }
     }
   }
@@ -93,7 +104,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         {/* canonical */}
-        <link rel="canonical" href="/" />
+        <link rel="canonical" href="https://devdump.vasriharsha.app/" />
         {/* explicit favicon (helps override default next/host icons) */}
         <link rel="icon" href="/devdump.png" sizes="32x32" type="image/png" />
         <link rel="shortcut icon" href="/devdump.png" />
