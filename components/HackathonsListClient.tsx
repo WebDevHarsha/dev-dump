@@ -210,6 +210,22 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
                     </div>
                   )}
 
+                          {/* Structured data for the hackathon (Event schema when possible) */}
+                          <script
+                            type="application/ld+json"
+                            dangerouslySetInnerHTML={{
+                              __html: JSON.stringify({
+                                "@context": "https://schema.org",
+                                "@type": "Event",
+                                name: hack.title,
+                                url: hack.url,
+                                image: thumbnailUrl || '/devdump.png',
+                                description: stripHtmlTags(hack.prize_amount || hack.submission_period_dates || ''),
+                                organizer: hack.organization_name ? { "@type": "Organization", name: hack.organization_name } : undefined,
+                              }),
+                            }}
+                          />
+
                   <div className="flex items-start justify-between gap-4">
                    <div>
                       <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-1 font-mono">{hack.title}</h3>

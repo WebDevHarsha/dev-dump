@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Sitemap: https://devdump.vasriharsha.app/sitemap.xml
+Host: devdump.vasriharsha.app

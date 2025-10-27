@@ -66,6 +66,9 @@ export const metadata: Metadata = {
   },
 };
 
+// Absolute base used for canonical / open graph URLs in metadata
+export const metadataBase = new URL('https://devdump.vasriharsha.app/')
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -92,7 +95,9 @@ export default function RootLayout({
         {/* canonical */}
         <link rel="canonical" href="/" />
         {/* explicit favicon (helps override default next/host icons) */}
-        <link rel="icon" href="/devdump.png" />
+        <link rel="icon" href="/devdump.png" sizes="32x32" type="image/png" />
+        <link rel="shortcut icon" href="/devdump.png" />
+        <link rel="apple-touch-icon" href="/devdump.png" />
         <meta name="keywords" content="hackathons, hackathon list, hackathon events, coding competitions, developer events" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </head>
