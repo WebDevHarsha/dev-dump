@@ -196,6 +196,17 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
           const prizeText = stripHtmlTags(hack.prize_amount)
           const thumbnailUrl = hack.thumbnail_url?.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url
           const isOpen = hack.open_state === 'open'
+          // try to extract a structured start date from common fields
+          const rawStart = (hack as any).startDate || (hack as any).start_date || (hack as any).start || (hack as any).starts_at || (hack as any).startsAt || (hack as any).startAt
+          let startDateISO: string | undefined
+          if (rawStart) {
+            try {
+              const d = new Date(rawStart)
+              if (!isNaN(d.getTime())) startDateISO = d.toISOString()
+            } catch (e) {
+              // ignore
+            }
+          }
 
           return (
             <Card key={String(hack.id) + '-' + i} className={`p-4 sm:p-6 border-4 border-foreground ${i % 2 === 0 ? 'md:rotate-1' : 'md:-rotate-1'} sticker hover:scale-105 transition-transform cursor-pointer bg-card`}>
@@ -211,20 +222,21 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
                   )}
 
                           {/* Structured data for the hackathon (Event schema when possible) */}
-                          <script
-                            type="application/ld+json"
-                            dangerouslySetInnerHTML={{
-                              __html: JSON.stringify({
-                                "@context": "https://schema.org",
-                                "@type": "Event",
-                                name: hack.title,
-                                url: hack.url,
-                                image: thumbnailUrl || '/devdump.png',
-                                description: stripHtmlTags(hack.prize_amount || hack.submission_period_dates || ''),
-                                organizer: hack.organization_name ? { "@type": "Organization", name: hack.organization_name } : undefined,
-                              }),
-                            }}
-                          />
+                          {(() => {
+                            const ldObj: any = {
+                              "@context": "https://schema.org",
+                              "@type": "Event",
+                              name: hack.title,
+                              url: hack.url,
+                              image: thumbnailUrl || '/devdump.png',
+                              description: stripHtmlTags(hack.prize_amount || hack.submission_period_dates || ''),
+                              organizer: hack.organization_name ? { "@type": "Organization", name: hack.organization_name } : undefined,
+                            }
+                            if (startDateISO) ldObj.startDate = startDateISO
+                            return (
+                              <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ldObj) }} />
+                            )
+                          })()}
 
                   <div className="flex items-start justify-between gap-4">
                    <div>
