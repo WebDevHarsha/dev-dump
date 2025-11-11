@@ -1,9 +1,11 @@
 import React from "react"
 import Card from "./ui/Card"
 import { Zap, Trophy, Code, Flame } from "lucide-react"
+import Footer from "./Footer"
 
 export default function About() {
   return (
+    <>
     <section id="about" className="py-20">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
@@ -73,5 +75,7 @@ export default function About() {
         </div>
       </div>
     </section>
+    <Footer></Footer>
+    </>
   )
 }
