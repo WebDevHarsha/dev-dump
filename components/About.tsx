@@ -15,26 +15,26 @@ export default function About() {
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="p-6 border-4 border-foreground rotate-1 bg-card sticker">
               <div className="bg-primary text-primary-foreground w-12 h-12 flex items-center justify-center border-2 border-foreground mb-4 rotate-3"><Zap className="w-6 h-6" /></div>
-              <h3 className="text-2xl font-black mb-3 font-mono">NO GATEKEEPING</h3>
-              <p className="text-muted-foreground leading-relaxed">All skill levels welcome. From first-time hackers to seasoned pros, everyone belongs here.</p>
+              <h3 className="text-2xl font-black mb-3 font-mono">ONE STOP SHOP</h3>
+              <p className="text-muted-foreground leading-relaxed">Stop juggling multiple websites. All major hackathons from Devfolio, Devpost, MLH & more - all in one place.</p>
             </Card>
 
             <Card className="p-6 border-4 border-foreground -rotate-1 bg-card sticker">
               <div className="bg-secondary text-secondary-foreground w-12 h-12 flex items-center justify-center border-2 border-foreground mb-4 -rotate-3"><Trophy className="w-6 h-6" /></div>
-              <h3 className="text-2xl font-black mb-3 font-mono">REAL PRIZES</h3>
-              <p className="text-muted-foreground leading-relaxed">Millions in prizes across hundreds of hackathons. Build cool stuff, get paid.</p>
+              <h3 className="text-2xl font-black mb-3 font-mono">ALWAYS UPDATED</h3>
+              <p className="text-muted-foreground leading-relaxed">Fresh hackathon listings, daily updates. Never miss a deadline or opportunity to build something awesome.</p>
             </Card>
 
             <Card className="p-6 border-4 border-foreground rotate-2 bg-card sticker">
               <div className="bg-foreground text-background w-12 h-12 flex items-center justify-center border-2 border-foreground mb-4 rotate-6"><Code className="w-6 h-6" /></div>
-              <h3 className="text-2xl font-black mb-3 font-mono">CHAOS FRIENDLY</h3>
-              <p className="text-muted-foreground leading-relaxed">We celebrate the messy, the weird, and the experimental. Break things and learn fast.</p>
+              <h3 className="text-2xl font-black mb-3 font-mono">FREE & OPEN API</h3>
+              <p className="text-muted-foreground leading-relaxed">Developers first. Access our free API to integrate hackathon data into your own projects and tools.</p>
             </Card>
 
             <Card className="p-6 border-4 border-foreground -rotate-2 bg-card sticker">
               <div className="bg-primary text-primary-foreground w-12 h-12 flex items-center justify-center border-2 border-foreground mb-4 -rotate-6"><Flame className="w-6 h-6" /></div>
-              <h3 className="text-2xl font-black mb-3 font-mono">GLOBAL COMMUNITY</h3>
-              <p className="text-muted-foreground leading-relaxed">Join 50K+ hackers worldwide. Virtual, in-person, or hybrid - we&apos;ve got you covered.</p>
+              <h3 className="text-2xl font-black mb-3 font-mono">BUILT BY HACKERS</h3>
+              <p className="text-muted-foreground leading-relaxed">Made with chaos & caffeine. Because we got tired of tab overload too.</p>
             </Card>
           </div>
         </div>
