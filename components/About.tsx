@@ -37,6 +37,39 @@ export default function About() {
               <p className="text-muted-foreground leading-relaxed">Made with chaos & caffeine. Because we got tired of tab overload too.</p>
             </Card>
           </div>
+
+          {/* API Section */}
+          <div className="mt-20">
+            <h2 className="text-4xl md:text-5xl font-black mb-8 text-center">
+              <span className="bg-foreground text-background px-4 py-2 rotate-1 inline-block border-4 border-foreground sticker">USE OUR API</span>
+            </h2>
+            
+            <Card className="p-8 border-4 border-foreground bg-card sticker rotate-1 max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground mb-6 text-center">
+                Integrate live hackathon data into your apps, bots, or projects. Free & open source.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <a 
+                  href="https://webdevharsha.github.io/open-hackathons-api/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block bg-primary text-primary-foreground px-6 py-3 font-mono font-bold border-3 border-foreground hover:translate-x-1 hover:translate-y-1 transition-transform rotate-1 sticker"
+                >
+                  � API Documentation
+                </a>
+                
+                <a 
+                  href="https://github.com/WebDevHarsha/open-hackathons-api" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block bg-secondary text-secondary-foreground px-6 py-3 font-mono font-bold border-3 border-foreground hover:translate-x-1 hover:translate-y-1 transition-transform -rotate-1 sticker"
+                >
+                  💻 GitHub Repository
+                </a>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </section>
