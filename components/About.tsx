@@ -51,14 +51,23 @@ export default function About() {
                 Integrate live hackathon data into your apps, bots, or projects. Free & open source.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center flex-wrap">
                 <a 
                   href="https://webdevharsha.github.io/open-hackathons-api/" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="inline-block bg-primary text-primary-foreground px-6 py-3 font-mono font-bold border-3 border-foreground hover:translate-x-1 hover:translate-y-1 transition-transform rotate-1 sticker"
                 >
-                  � API Documentation
+                  📚 API Documentation
+                </a>
+                
+                <a 
+                  href="https://bump.sh/void/doc/open-hackathons-api/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block bg-foreground text-background px-6 py-3 font-mono font-bold border-3 border-foreground hover:translate-x-1 hover:translate-y-1 transition-transform rotate-2 sticker"
+                >
+                  📖 Interactive Docs
                 </a>
                 
                 <a 
