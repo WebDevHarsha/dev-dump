@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-6">
             <h3 className="font-mono font-bold text-lg mb-3">Open Hackathons API</h3>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center flex-wrap">
               <a 
                 href="https://webdevharsha.github.io/open-hackathons-api/" 
                 target="_blank" 
@@ -15,6 +15,14 @@ export default function Footer() {
                 className="inline-block font-mono text-sm hover:underline underline-offset-4 transition-all hover:scale-105"
               >
                 🚀 API Documentation →
+              </a>
+              <a 
+                href="https://bump.sh/void/doc/open-hackathons-api/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-block font-mono text-sm hover:underline underline-offset-4 transition-all hover:scale-105"
+              >
+                📖 Interactive Docs →
               </a>
               <a 
                 href="https://github.com/WebDevHarsha/open-hackathons-api" 
