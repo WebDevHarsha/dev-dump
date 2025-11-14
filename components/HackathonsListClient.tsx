@@ -221,7 +221,7 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
                 <a href={hack.url} target="_blank" rel="noopener noreferrer" className="block">
                   {thumbnailUrl && (
                     <div className="relative -mx-4 -mt-4 mb-4 h-28 sm:h-32 md:-mx-6 md:-mt-6 md:h-40 overflow-hidden border-b-4 border-foreground">
-                      <Image src={thumbnailUrl} alt={hack.title} fill className="object-cover" />
+                      <Image src={thumbnailUrl} alt={hack.title} fill unoptimized className="object-cover" />
                       {hack.featured && (
                         <Badge className="absolute top-2 right-2 bg-yellow-500 text-black border-2 border-foreground font-mono font-bold rotate-3">FEATURED</Badge>
                       )}
