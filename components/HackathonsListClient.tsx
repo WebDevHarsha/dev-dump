@@ -26,7 +26,6 @@ type Hackathon = {
   winners_announced?: boolean
   submission_gallery_url?: string
   start_a_submission_url?: string
-  // common variants for start date fields from various data sources
   startDate?: string | number | Date
   start_date?: string
   start?: string
@@ -40,35 +39,28 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
-  // simple debounce for search input
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim().toLowerCase()), 250)
     return () => clearTimeout(t)
   }, [search])
 
-  // Filters
   const [locationFilter, setLocationFilter] = useState<'all' | 'online' | 'in-person'>('all')
   const [daysFilter, setDaysFilter] = useState<'all' | 'lt7' | '7to30' | 'gt30'>('all')
-  // new: featured filter
   const [featuredFilter, setFeaturedFilter] = useState<'all' | 'featured'>('all')
 
   function parseDaysLeft(str?: string): number | null {
     if (!str) return null
     const s = str.toLowerCase()
 
-    // Exact days: "6 days", "1 day"
     let m = s.match(/(\d+)\s*day/)
     if (m) return Number(m[1])
 
-    // Hours -> treat as 0 days remaining
     m = s.match(/(\d+)\s*hour/)
     if (m) return 0
 
-    // Weeks: "2 weeks", "1 wk", "2 wks"
     m = s.match(/(\d+)\s*(?:week|weeks|wk|wks|w)/)
     if (m) return Number(m[1]) * 7
 
-    // Months: approximate as 30 days: "1 month", "2 mos"
     m = s.match(/(\d+)\s*(?:month|months|mo|mos)/)
     if (m) return Number(m[1]) * 30
 
@@ -86,7 +78,6 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
   }
 
   const filtered = hackathons.filter((h) => {
-    // search filter
     if (debouncedSearch) {
       const q = debouncedSearch
       const inTitle = (h.title || '').toLowerCase().includes(q)
@@ -94,13 +85,11 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
       const inThemes = (h.themes || []).some(t => (t.name || '').toLowerCase().includes(q))
       if (!(inTitle || inOrg || inThemes)) return false
     }
-    // location filter
     const loc = (typeof h.displayed_location === 'string') ? h.displayed_location : (h.displayed_location?.location || '')
     const isOnline = !loc || /online/i.test(String(loc))
     if (locationFilter === 'online' && !isOnline) return false
     if (locationFilter === 'in-person' && isOnline) return false
 
-    // days left filter
     if (daysFilter !== 'all') {
       const days = parseDaysLeft(h.time_left_to_submission)
       if (days === null) return false
@@ -109,7 +98,6 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
       if (daysFilter === 'gt30' && !(days > 30)) return false
     }
 
-    // featured filter
     if (featuredFilter === 'featured' && !h.featured) return false
 
     return true
@@ -201,9 +189,10 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {visibleFiltered.map((hack, i) => {
           const prizeText = stripHtmlTags(hack.prize_amount)
-          const thumbnailUrl = hack.thumbnail_url?.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url
+          const thumbnailUrl = hack.thumbnail_url
+            ? (hack.thumbnail_url.startsWith('//') ? `https:${hack.thumbnail_url}` : hack.thumbnail_url)
+            : '/normal.png'
           const isOpen = hack.open_state === 'open'
-          // try to extract a structured start date from common fields
           const rawStart = hack.startDate ?? hack.start_date ?? hack.start ?? hack.starts_at ?? hack.startsAt ?? hack.startAt
           let startDateISO: string | undefined
           if (rawStart) {
@@ -211,7 +200,6 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
               const d = new Date(rawStart as string)
               if (!isNaN(d.getTime())) startDateISO = d.toISOString()
             } catch {
-              // ignore invalid date
             }
           }
 
@@ -228,7 +216,6 @@ export default function HackathonsListClient({ hackathons }: { hackathons: Hacka
                     </div>
                   )}
 
-                          {/* Structured data for the hackathon (Event schema when possible) */}
                           {(() => {
                             const ldObj: Record<string, unknown> = {
                               "@context": "https://schema.org",
